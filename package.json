@@ -1,0 +1,32 @@
+{
+  "name": "base-keeper-agent",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Shadow-mode Base/Morpho keeper agent starter: Railway first, VPS migration ready.",
+  "type": "module",
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "dev": "tsx watch apps/keeper-worker/src/index.ts",
+    "start": "tsx apps/keeper-worker/src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "health": "tsx scripts/check-health.ts",
+    "docker:build": "docker build -t base-keeper-agent .",
+    "docker:run": "docker run --rm --env-file .env -p 8080:8080 base-keeper-agent"
+  },
+  "dependencies": {
+    "@types/node": "^22.13.1",
+    "dotenv": "^16.4.7",
+    "pino": "^9.6.0",
+    "pino-pretty": "^13.0.0",
+    "viem": "^2.23.2",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
