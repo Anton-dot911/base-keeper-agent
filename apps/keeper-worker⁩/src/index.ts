@@ -10,6 +10,7 @@ import { startHealthServer, type WorkerStatus } from "./health-server.js";
 
 const config = loadConfig();
 const logger = createLogger(config.LOG_LEVEL);
+      const port = Number(process.env.PORT ?? 3000);
 
 const client = createPublicClient({
   chain: base,
