@@ -12,7 +12,9 @@ export type WorkerStatus = {
 
 export function startHealthServer(port: number, getStatus: () => WorkerStatus) {
   const server = http.createServer((request, response) => {
-    if (request.url === "/health" || request.url === "/") {
+    const url = request.url?.split("?")[0];
+
+    if (url === "/health" || url === "/api/health" || url === "/") {
       response.writeHead(200, { "content-type": "application/json" });
       response.end(JSON.stringify({ ok: true, ...getStatus() }));
       return;
