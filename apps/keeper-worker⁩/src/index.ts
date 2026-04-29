@@ -10,24 +10,15 @@ import { startHealthServer, type WorkerStatus } from "./health-server.js";
 
 const config = loadConfig();
 const logger = createLogger(config.LOG_LEVEL);
-      const port = Number(process.env.PORT ?? 3000);
+
+const port = Number(process.env.PORT ?? config.HEALTH_PORT ?? 3000);
 
 const client = createPublicClient({
   chain: base,
   transport: http(config.BASE_RPC_URL, { retryCount: 2, timeout: 10_000 })
 });
 
-const status: WorkerStatus = {
-  service: "base-keeper-agent",
-  mode: "shadow",
-  startedAt: new Date().toISOString(),
-  lastScanAt: null,
-  lastBlockNumber: null,
-  scanCount: 0,
-  lastError: null
-};
-
-startHealthServer(config.HEALTH_PORT, () => status);
+startHealthServer(port, () => status);
 
 async function scanOnce(): Promise<void> {
   const startedAt = Date.now();
@@ -61,7 +52,7 @@ async function main(): Promise<void> {
     service: status.service,
     mode: status.mode,
     chainId: config.CHAIN_ID,
-    healthPort: config.HEALTH_PORT,
+    healthPort: port,
     scanIntervalMs: config.SCAN_INTERVAL_MS,
     executionEnabled: false,
     noPrivateKey: config.NO_PRIVATE_KEY,
