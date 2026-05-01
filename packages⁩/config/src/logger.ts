@@ -3,7 +3,12 @@ import pino from "pino";
 export function createLogger(level = "info") {
   return pino({
     level,
-    base: undefined,
-    timestamp: pino.stdTimeFunctions.isoTime
+    transport:
+      process.env.NODE_ENV === "production"
+        ? undefined
+        : {
+            target: "pino-pretty",
+            options: { colorize: true }
+          }
   });
 }
