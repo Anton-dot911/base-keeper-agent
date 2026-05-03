@@ -10,7 +10,14 @@ const EnvSchema = z.object({
   SCAN_INTERVAL_MS: z.coerce.number().default(60_000),
   DATA_DIR: z.string().default("/app/data"),
   NO_PRIVATE_KEY: z.coerce.boolean().default(true),
-  MORPHO_MARKET_IDS: z.string().default("")
+  MORPHO_MARKET_IDS: z.string().default(""),
+
+  ALERT_EMAIL_ENABLED: z.coerce.boolean().default(false),
+  ALERT_EMAIL_TO: z.string().default(""),
+  ALERT_EMAIL_FROM: z.string().default("Base Keeper Agent <alerts@resend.dev>"),
+  RESEND_API_KEY: z.string().default(""),
+  MIN_EXECUTION_NET_PROFIT_USD: z.coerce.number().default(10),
+  MIN_EXECUTION_CONFIDENCE: z.enum(["low", "medium", "high"]).default("high")
 });
 
 export function loadConfig() {
