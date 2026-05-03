@@ -13,12 +13,25 @@ export type MorphoMarketPosition = {
   healthFactor: number | null;
 };
 
+export type LiquidationSimulation = {
+  type: "liquidation_simulation";
+  eligible: boolean;
+  profitable: boolean;
+  liquidationBonusBps: number;
+  grossProfitUsd: number;
+  estimatedGasCostUsd: number;
+  protocolBufferUsd: number;
+  netProfitUsd: number;
+  confidence: "low" | "medium" | "high";
+  reason: string;
+};
+
 export type MarketRiskSignal = {
   type: "market_risk_signal";
   marketId: string;
   userAddress: string | null;
   riskLevel: RiskLevel;
-  action: "monitor" | "investigate" | "prepare_execution";
+  action: "monitor" | "investigate" | "prepare_execution" | "skip";
   reason: string;
   healthFactor: number | null;
   currentLtv: number | null;
@@ -26,6 +39,7 @@ export type MarketRiskSignal = {
   borrowAssetsUsd: number;
   collateralUsd: number;
   estimatedProfitUsd: number;
+  simulation: LiquidationSimulation;
   executionEnabled: false;
   timestamp: string;
 };
@@ -35,5 +49,7 @@ export type ShadowMorphoScanResult = {
   positionsScanned: number;
   opportunitiesFound: number;
   liquidatablePositions: number;
+  profitableSimulations: number;
+  totalEstimatedNetProfitUsd: number;
   riskSignals: MarketRiskSignal[];
 };
