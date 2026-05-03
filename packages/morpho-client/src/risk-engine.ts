@@ -1,10 +1,11 @@
 import { MarketRiskSignal, MorphoMarketPosition } from "./types.js";
+import { simulateLiquidation } from "./simulation-engine.js";
 
 export function evaluatePositionRisk(p: MorphoMarketPosition): MarketRiskSignal {
   const ltv = p.collateralUsd > 0 ? p.borrowAssetsUsd / p.collateralUsd : null;
 
   let riskLevel: "safe" | "watch" | "critical" = "safe";
-  let action: "monitor" | "investigate" | "prepare_execution" = "monitor";
+  let action: "monitor" | "investigate" | "prepare_execution" | "skip" = "monitor";
 
   if (p.healthFactor !== null) {
     if (p.healthFactor <= 1.05) {
@@ -16,10 +17,14 @@ export function evaluatePositionRisk(p: MorphoMarketPosition): MarketRiskSignal 
     }
   }
 
-  const estimatedProfit =
-    riskLevel === "critical"
-      ? p.borrowAssetsUsd * 0.05
-      : 0;
+  const simulation = simulateLiquidation(p);
+
+  // override decision with simulation
+  if (riskLevel === "critical" && !simulation.profitable) {
+    action = "skip";
+  }
+
+  const estimatedProfit = simulation.netProfitUsd;
 
   return {
     type: "market_risk_signal",
@@ -28,17 +33,19 @@ export function evaluatePositionRisk(p: MorphoMarketPosition): MarketRiskSignal 
     riskLevel,
     action,
     reason:
-      riskLevel === "critical"
-        ? "Liquidation candidate (HF near 1)"
+      simulation.reason ||
+      (riskLevel === "critical"
+        ? "Liquidation candidate"
         : riskLevel === "watch"
         ? "Position approaching risk"
-        : "Healthy position",
+        : "Healthy position"),
     healthFactor: p.healthFactor,
     currentLtv: ltv,
     liquidationLtv: p.lltv,
     borrowAssetsUsd: p.borrowAssetsUsd,
     collateralUsd: p.collateralUsd,
     estimatedProfitUsd: estimatedProfit,
+    simulation,
     executionEnabled: false,
     timestamp: new Date().toISOString()
   };
