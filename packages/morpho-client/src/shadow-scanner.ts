@@ -23,11 +23,22 @@ export async function runShadowMorphoScan({
     (r) => r.riskLevel === "critical"
   ).length;
 
+  const profitableSimulations = riskSignals.filter(
+    (r) => r.simulation.profitable
+  ).length;
+
+  const totalEstimatedNetProfitUsd = riskSignals.reduce(
+    (sum, r) => sum + r.simulation.netProfitUsd,
+    0
+  );
+
   return {
     marketsScanned: markets.length,
     positionsScanned: positions.length,
     opportunitiesFound,
     liquidatablePositions,
+    profitableSimulations,
+    totalEstimatedNetProfitUsd,
     riskSignals
   };
 }
