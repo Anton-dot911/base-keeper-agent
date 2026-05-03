@@ -8,6 +8,7 @@ import { loadConfiguredMarkets } from "../../../packages/morpho-client/src/marke
 import { runShadowMorphoScan } from "../../../packages/morpho-client/src/shadow-scanner.js";
 import { appendJsonl } from "../../../packages/storage/src/jsonl.js";
 import { startHealthServer, type WorkerStatus } from "./health-server.js";
+import { isExecutionReady, sendEmailAlert } from "../../../packages/morpho-client/src/alert-engine.js";
 
 const config = loadConfig();
 const logger = createLogger(config.LOG_LEVEL);
@@ -40,6 +41,13 @@ async function scanOnce(): Promise<void> {
   const blockNumber = await client.getBlockNumber();
   const markets = loadConfiguredMarkets(config.morphoMarketIds);
   const scan = await runShadowMorphoScan({ client, markets });
+
+  for (const signal of scan.riskSignals) {
+    if (isExecutionReady(signal, config)) {
+      logger.info(signal, "🔥 EXECUTION READY");
+      await sendEmailAlert(signal, config);
+    }
+  }
 
   const event = {
     type: "scan_completed",
