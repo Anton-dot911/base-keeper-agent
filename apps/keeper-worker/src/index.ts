@@ -35,6 +35,25 @@ const client = createPublicClient({
 
 startHealthServer(port, () => status);
 
+async function sendStartupTestEmail() {
+  if (!config.ALERT_EMAIL_TEST_ON_STARTUP) return;
+
+  logger.info("Sending startup test email...");
+
+  await sendEmailAlert(
+    {
+      marketId: "TEST",
+      userAddress: "TEST",
+      healthFactor: 0.99,
+      simulation: {
+        netProfitUsd: 42,
+        confidence: "high"
+      }
+    },
+    config
+  );
+}
+
 async function scanOnce(): Promise<void> {
   const startedAt = Date.now();
 
@@ -84,6 +103,8 @@ async function main(): Promise<void> {
     },
     "Keeper worker starting"
   );
+
+  await sendStartupTestEmail();
 
   while (true) {
     try {
