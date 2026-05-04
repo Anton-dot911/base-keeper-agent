@@ -13,6 +13,7 @@ const EnvSchema = z.object({
   MORPHO_MARKET_IDS: z.string().default(""),
 
   ALERT_EMAIL_ENABLED: z.coerce.boolean().default(false),
+  ALERT_EMAIL_TEST_ON_STARTUP: z.coerce.boolean().default(false),
   ALERT_EMAIL_TO: z.string().default(""),
   ALERT_EMAIL_FROM: z.string().default("Base Keeper Agent <alerts@resend.dev>"),
   RESEND_API_KEY: z.string().default(""),
