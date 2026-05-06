@@ -37,10 +37,22 @@ const client = createPublicClient({
 
 startHealthServer(port, () => status);
 
-async function sendStartupTestEmail() {
-  if (!config.ALERT_EMAIL_TEST_ON_STARTUP) return;
+function rawEnvTrue(name: string): boolean {
+  return process.env[name]?.trim().toLowerCase() === "true";
+}
 
-  logger.info("Sending startup test email...");
+async function sendStartupTestEmail() {
+  const startupTestEmailEnabled = rawEnvTrue("ALERT_EMAIL_TEST_ON_STARTUP");
+
+  if (!startupTestEmailEnabled) {
+    logger.info(
+      { startupTestEmailEnabled: false },
+      "Startup test email disabled"
+    );
+    return;
+  }
+
+  logger.info({ startupTestEmailEnabled: true }, "Sending startup test email...");
 
   await sendEmailAlert(
     {
@@ -117,7 +129,9 @@ async function main(): Promise<void> {
       marketsConfigured: config.morphoMarketIds.length,
       copilotEnabled: config.COPILOT_ENABLED,
       paymasterPolicyEnabled: config.PAYMASTER_POLICY_ENABLED,
-      paymasterKillSwitch: config.PAYMASTER_KILL_SWITCH
+      paymasterKillSwitch: config.PAYMASTER_KILL_SWITCH,
+      startupTestEmailEnabled: rawEnvTrue("ALERT_EMAIL_TEST_ON_STARTUP"),
+      syntheticTestSignalEnabled: rawEnvTrue("SYNTHETIC_TEST_SIGNAL_ENABLED")
     },
     "Keeper worker starting"
   );
