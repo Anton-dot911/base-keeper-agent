@@ -20,7 +20,15 @@ const EnvSchema = z.object({
   MIN_EXECUTION_NET_PROFIT_USD: z.coerce.number().default(10),
   MIN_EXECUTION_CONFIDENCE: z.enum(["low", "medium", "high"]).default("high"),
 
-  COPILOT_ENABLED: z.coerce.boolean().default(true)
+  COPILOT_ENABLED: z.coerce.boolean().default(true),
+
+  PAYMASTER_POLICY_ENABLED: z.coerce.boolean().default(true),
+  PAYMASTER_KILL_SWITCH: z.coerce.boolean().default(false),
+  MIN_PAYMASTER_NET_PROFIT_USD: z.coerce.number().default(10),
+  MAX_PAYMASTER_GAS_USD: z.coerce.number().default(5),
+  MAX_PAYMASTER_GAS_TO_PROFIT_RATIO: z.coerce.number().default(0.3),
+  PAYMASTER_DAILY_BUDGET_USD: z.coerce.number().default(50),
+  PAYMASTER_DAILY_SPENT_USD: z.coerce.number().default(0)
 });
 
 export function loadConfig() {
