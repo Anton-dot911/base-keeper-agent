@@ -28,7 +28,10 @@ const EnvSchema = z.object({
   MAX_PAYMASTER_GAS_USD: z.coerce.number().default(5),
   MAX_PAYMASTER_GAS_TO_PROFIT_RATIO: z.coerce.number().default(0.3),
   PAYMASTER_DAILY_BUDGET_USD: z.coerce.number().default(50),
-  PAYMASTER_DAILY_SPENT_USD: z.coerce.number().default(0)
+  PAYMASTER_DAILY_SPENT_USD: z.coerce.number().default(0),
+
+  SYNTHETIC_TEST_SIGNAL_ENABLED: z.coerce.boolean().default(false),
+  SYNTHETIC_TEST_MARKET_ID: z.string().default("SYNTHETIC-MARKET")
 });
 
 export function loadConfig() {
