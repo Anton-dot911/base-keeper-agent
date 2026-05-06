@@ -1,5 +1,6 @@
 import { MarketRiskSignal, MorphoMarketPosition } from "./types.js";
 import { simulateLiquidation } from "./simulation-engine.js";
+import { simulatePreExecutionReadiness } from "./tx-simulator.js";
 
 export function evaluatePositionRisk(p: MorphoMarketPosition): MarketRiskSignal {
   const ltv = p.collateralUsd > 0 ? p.borrowAssetsUsd / p.collateralUsd : null;
@@ -18,6 +19,12 @@ export function evaluatePositionRisk(p: MorphoMarketPosition): MarketRiskSignal 
   }
 
   const simulation = simulateLiquidation(p);
+  const preExecution = simulatePreExecutionReadiness({
+    marketId: p.marketId,
+    userAddress: p.userAddress,
+    healthFactor: p.healthFactor,
+    liquidationSimulation: simulation
+  });
 
   // override decision with simulation
   if (riskLevel === "critical" && !simulation.profitable) {
@@ -46,6 +53,7 @@ export function evaluatePositionRisk(p: MorphoMarketPosition): MarketRiskSignal 
     collateralUsd: p.collateralUsd,
     estimatedProfitUsd: estimatedProfit,
     simulation,
+    preExecution,
     executionEnabled: false,
     timestamp: new Date().toISOString()
   };
