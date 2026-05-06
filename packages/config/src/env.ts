@@ -18,7 +18,9 @@ const EnvSchema = z.object({
   ALERT_EMAIL_FROM: z.string().default("Base Keeper Agent <alerts@resend.dev>"),
   RESEND_API_KEY: z.string().default(""),
   MIN_EXECUTION_NET_PROFIT_USD: z.coerce.number().default(10),
-  MIN_EXECUTION_CONFIDENCE: z.enum(["low", "medium", "high"]).default("high")
+  MIN_EXECUTION_CONFIDENCE: z.enum(["low", "medium", "high"]).default("high"),
+
+  COPILOT_ENABLED: z.coerce.boolean().default(true)
 });
 
 export function loadConfig() {
