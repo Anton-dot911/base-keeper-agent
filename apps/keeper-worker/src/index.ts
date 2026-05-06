@@ -60,7 +60,7 @@ async function scanOnce(): Promise<void> {
 
   const blockNumber = await client.getBlockNumber();
   const markets = loadConfiguredMarkets(config.morphoMarketIds);
-  const scan = await runShadowMorphoScan({ client, markets });
+  const scan = await runShadowMorphoScan({ client, markets, config });
 
   for (const signal of scan.riskSignals) {
     if (isExecutionReady(signal, config)) {
@@ -110,7 +110,9 @@ async function main(): Promise<void> {
       executionEnabled: false,
       noPrivateKey: config.NO_PRIVATE_KEY,
       marketsConfigured: config.morphoMarketIds.length,
-      copilotEnabled: config.COPILOT_ENABLED
+      copilotEnabled: config.COPILOT_ENABLED,
+      paymasterPolicyEnabled: config.PAYMASTER_POLICY_ENABLED,
+      paymasterKillSwitch: config.PAYMASTER_KILL_SWITCH
     },
     "Keeper worker starting"
   );
