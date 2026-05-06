@@ -19,8 +19,9 @@ export function evaluatePaymasterPolicy(
   const dailyBudgetUsd = config.PAYMASTER_DAILY_BUDGET_USD ?? DEFAULT_DAILY_BUDGET_USD;
   const dailyBudgetUsedUsd = config.PAYMASTER_DAILY_SPENT_USD ?? 0;
 
-  const gasUsd = signal.preExecution.estimatedBundleGasUsd;
-  const netProfitUsd = signal.preExecution.estimatedNetAfterBundleUsd;
+  const gasUsd = signal.txSimulation.gasEstimateUsd || signal.preExecution.estimatedBundleGasUsd;
+  const netProfitUsd =
+    signal.txSimulation.netAfterSimulationUsd || signal.preExecution.estimatedNetAfterBundleUsd;
   const grossProfitUsd = signal.simulation.grossProfitUsd;
   const gasToProfitRatio = grossProfitUsd > 0 ? gasUsd / grossProfitUsd : null;
 
@@ -31,6 +32,10 @@ export function evaluatePaymasterPolicy(
 
   if (signal.preExecution.status !== "ready_for_tx_simulation") {
     blockedBy.push(`pre_execution_${signal.preExecution.status}`);
+  }
+
+  if (!signal.txSimulation.passed) {
+    blockedBy.push(`tx_simulation_${signal.txSimulation.status}`);
   }
 
   if (netProfitUsd < minNetProfitUsd) {
@@ -74,12 +79,16 @@ export function evaluatePaymasterPolicy(
 function buildReason(blockedBy: string[]): string {
   if (blockedBy.length === 0) return "Policy passed.";
 
+  if (blockedBy.includes("kill_switch_active")) {
+    return "Paymaster sponsorship blocked because the kill switch is active.";
+  }
+
   if (blockedBy.some((x) => x.startsWith("pre_execution_"))) {
     return "Paymaster sponsorship blocked because the signal is not ready for transaction simulation.";
   }
 
-  if (blockedBy.includes("kill_switch_active")) {
-    return "Paymaster sponsorship blocked because the kill switch is active.";
+  if (blockedBy.some((x) => x.startsWith("tx_simulation_"))) {
+    return "Paymaster sponsorship blocked because transaction simulation has not passed yet.";
   }
 
   if (blockedBy.includes("net_profit_below_threshold")) {
