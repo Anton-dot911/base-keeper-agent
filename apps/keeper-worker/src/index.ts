@@ -4,6 +4,7 @@ import { base } from "viem/chains";
 
 import { loadConfig } from "../../../packages/config/src/env.js";
 import { createLogger } from "../../../packages/config/src/logger.js";
+import { buildCopilotSummary } from "../../../packages/copilot/src/index.js";
 import { loadConfiguredMarkets } from "../../../packages/morpho-client/src/market-config.js";
 import { runShadowMorphoScan } from "../../../packages/morpho-client/src/shadow-scanner.js";
 import { appendJsonl } from "../../../packages/storage/src/jsonl.js";
@@ -68,6 +69,14 @@ async function scanOnce(): Promise<void> {
     }
   }
 
+  const copilotSummary = config.COPILOT_ENABLED
+    ? buildCopilotSummary(scan)
+    : null;
+
+  if (copilotSummary) {
+    logger.info(copilotSummary, "Keeper Copilot summary");
+  }
+
   const event = {
     type: "scan_completed",
     service: status.service,
@@ -76,6 +85,7 @@ async function scanOnce(): Promise<void> {
     blockNumber: blockNumber.toString(),
     scanDurationMs: Date.now() - startedAt,
     ...scan,
+    copilotSummary,
     executionEnabled: false,
     timestamp: new Date().toISOString()
   };
@@ -99,7 +109,8 @@ async function main(): Promise<void> {
       scanIntervalMs: config.SCAN_INTERVAL_MS,
       executionEnabled: false,
       noPrivateKey: config.NO_PRIVATE_KEY,
-      marketsConfigured: config.morphoMarketIds.length
+      marketsConfigured: config.morphoMarketIds.length,
+      copilotEnabled: config.COPILOT_ENABLED
     },
     "Keeper worker starting"
   );
