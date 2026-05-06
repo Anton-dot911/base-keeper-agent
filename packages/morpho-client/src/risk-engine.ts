@@ -1,6 +1,7 @@
 import { MarketRiskSignal, MorphoMarketPosition } from "./types.js";
 import { simulateLiquidation } from "./simulation-engine.js";
 import { simulatePreExecutionReadiness } from "./tx-simulator.js";
+import { simulateTransactionCandidate } from "./tx-simulation-engine.js";
 import { evaluatePaymasterPolicy } from "../../paymaster-policy/src/index.js";
 
 export function evaluatePositionRisk(
@@ -29,6 +30,7 @@ export function evaluatePositionRisk(
     healthFactor: p.healthFactor,
     liquidationSimulation: simulation
   });
+  const txSimulation = simulateTransactionCandidate(preExecution);
 
   // override decision with simulation
   if (riskLevel === "critical" && !simulation.profitable) {
@@ -58,6 +60,7 @@ export function evaluatePositionRisk(
     estimatedProfitUsd: estimatedProfit,
     simulation,
     preExecution,
+    txSimulation,
     executionEnabled: false as const,
     timestamp: new Date().toISOString()
   };
