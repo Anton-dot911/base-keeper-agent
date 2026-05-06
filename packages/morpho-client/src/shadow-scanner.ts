@@ -27,6 +27,10 @@ export async function runShadowMorphoScan({
     (r) => r.simulation.profitable
   ).length;
 
+  const preExecutionReady = riskSignals.filter(
+    (r) => r.preExecution.status === "ready_for_tx_simulation"
+  ).length;
+
   const totalEstimatedNetProfitUsd = riskSignals.reduce(
     (sum, r) => sum + r.simulation.netProfitUsd,
     0
@@ -38,6 +42,7 @@ export async function runShadowMorphoScan({
     opportunitiesFound,
     liquidatablePositions,
     profitableSimulations,
+    preExecutionReady,
     totalEstimatedNetProfitUsd,
     riskSignals
   };
