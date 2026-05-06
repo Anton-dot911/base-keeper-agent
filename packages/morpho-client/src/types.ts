@@ -51,6 +51,23 @@ export type PreExecutionSimulation = {
   reason: string;
 };
 
+export type PaymasterPolicyDecision = {
+  type: "paymaster_policy_decision";
+  mode: "dry_run";
+  sponsor: boolean;
+  policyEnabled: boolean;
+  killSwitchActive: boolean;
+  reason: string;
+  blockedBy: string[];
+  minNetProfitUsd: number;
+  maxGasUsd: number;
+  maxGasToProfitRatio: number;
+  dailyBudgetUsd: number;
+  dailyBudgetUsedUsd: number;
+  gasToProfitRatio: number | null;
+  timestamp: string;
+};
+
 export type MarketRiskSignal = {
   type: "market_risk_signal";
   marketId: string;
@@ -66,6 +83,7 @@ export type MarketRiskSignal = {
   estimatedProfitUsd: number;
   simulation: LiquidationSimulation;
   preExecution: PreExecutionSimulation;
+  paymasterPolicy: PaymasterPolicyDecision;
   executionEnabled: false;
   timestamp: string;
 };
@@ -77,6 +95,7 @@ export type ShadowMorphoScanResult = {
   liquidatablePositions: number;
   profitableSimulations: number;
   preExecutionReady: number;
+  paymasterSponsorReady: number;
   totalEstimatedNetProfitUsd: number;
   riskSignals: MarketRiskSignal[];
 };
