@@ -1,6 +1,7 @@
 import type { ConfiguredMarket } from "./market-config.js";
 import { fetchMorphoMarketPositions } from "./market-reader.js";
 import { evaluatePositionRisk } from "./risk-engine.js";
+import { createSyntheticLiquidationPosition } from "./synthetic-test-signal.js";
 import type { ShadowMorphoScanResult } from "./types.js";
 
 export async function runShadowMorphoScan({
@@ -9,11 +10,23 @@ export async function runShadowMorphoScan({
 }: {
   client: unknown;
   markets: ConfiguredMarket[];
-  config: Parameters<typeof evaluatePositionRisk>[1];
+  config: Parameters<typeof evaluatePositionRisk>[1] & {
+    SYNTHETIC_TEST_SIGNAL_ENABLED?: boolean;
+    SYNTHETIC_TEST_MARKET_ID?: string;
+  };
 }): Promise<ShadowMorphoScanResult> {
   const marketIds = markets.map((m) => m.id);
 
-  const positions = await fetchMorphoMarketPositions(marketIds);
+  const livePositions = await fetchMorphoMarketPositions(marketIds);
+
+  const positions = config.SYNTHETIC_TEST_SIGNAL_ENABLED
+    ? [
+        ...livePositions,
+        createSyntheticLiquidationPosition({
+          marketId: config.SYNTHETIC_TEST_MARKET_ID || marketIds[0] || "SYNTHETIC-MARKET"
+        })
+      ]
+    : livePositions;
 
   const riskSignals = positions.map((p) => evaluatePositionRisk(p, config));
 
