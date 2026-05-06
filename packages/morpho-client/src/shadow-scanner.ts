@@ -46,6 +46,10 @@ export async function runShadowMorphoScan({
     (r) => r.preExecution.status === "ready_for_tx_simulation"
   ).length;
 
+  const txSimulationReady = riskSignals.filter(
+    (r) => r.txSimulation.passed
+  ).length;
+
   const paymasterSponsorReady = riskSignals.filter(
     (r) => r.paymasterPolicy.sponsor
   ).length;
@@ -61,6 +65,7 @@ export async function runShadowMorphoScan({
     liquidatablePositions,
     profitableSimulations,
     preExecutionReady,
+    txSimulationReady,
     paymasterSponsorReady,
     totalEstimatedNetProfitUsd,
     riskSignals
