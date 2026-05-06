@@ -26,6 +26,31 @@ export type LiquidationSimulation = {
   reason: string;
 };
 
+export type LiquidationTxCandidate = {
+  type: "liquidation_tx_candidate";
+  marketId: string;
+  borrower: string | null;
+  targetContract: string;
+  functionName: "liquidate";
+  calldataReady: boolean;
+  reason: string;
+};
+
+export type PreExecutionSimulation = {
+  type: "pre_execution_simulation";
+  status:
+    | "ready_for_tx_simulation"
+    | "health_factor_unavailable"
+    | "not_liquidatable"
+    | "simulation_not_eligible"
+    | "not_profitable"
+    | "low_confidence";
+  txCandidate: LiquidationTxCandidate | null;
+  estimatedBundleGasUsd: number;
+  estimatedNetAfterBundleUsd: number;
+  reason: string;
+};
+
 export type MarketRiskSignal = {
   type: "market_risk_signal";
   marketId: string;
@@ -40,6 +65,7 @@ export type MarketRiskSignal = {
   collateralUsd: number;
   estimatedProfitUsd: number;
   simulation: LiquidationSimulation;
+  preExecution: PreExecutionSimulation;
   executionEnabled: false;
   timestamp: string;
 };
@@ -50,6 +76,7 @@ export type ShadowMorphoScanResult = {
   opportunitiesFound: number;
   liquidatablePositions: number;
   profitableSimulations: number;
+  preExecutionReady: number;
   totalEstimatedNetProfitUsd: number;
   riskSignals: MarketRiskSignal[];
 };
