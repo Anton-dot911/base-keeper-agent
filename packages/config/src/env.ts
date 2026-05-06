@@ -1,6 +1,18 @@
 import "dotenv/config";
 import { z } from "zod";
 
+const BooleanEnv = z.preprocess((value) => {
+  if (typeof value === "boolean") return value;
+  if (typeof value !== "string") return value;
+
+  const normalized = value.trim().toLowerCase();
+
+  if (["true", "1", "yes", "y", "on"].includes(normalized)) return true;
+  if (["false", "0", "no", "n", "off", ""].includes(normalized)) return false;
+
+  return value;
+}, z.boolean());
+
 const EnvSchema = z.object({
   NODE_ENV: z.string().default("production"),
   LOG_LEVEL: z.string().default("info"),
@@ -9,28 +21,28 @@ const EnvSchema = z.object({
   HEALTH_PORT: z.coerce.number().default(8080),
   SCAN_INTERVAL_MS: z.coerce.number().default(60_000),
   DATA_DIR: z.string().default("/app/data"),
-  NO_PRIVATE_KEY: z.coerce.boolean().default(true),
+  NO_PRIVATE_KEY: BooleanEnv.default(true),
   MORPHO_MARKET_IDS: z.string().default(""),
 
-  ALERT_EMAIL_ENABLED: z.coerce.boolean().default(false),
-  ALERT_EMAIL_TEST_ON_STARTUP: z.coerce.boolean().default(false),
+  ALERT_EMAIL_ENABLED: BooleanEnv.default(false),
+  ALERT_EMAIL_TEST_ON_STARTUP: BooleanEnv.default(false),
   ALERT_EMAIL_TO: z.string().default(""),
   ALERT_EMAIL_FROM: z.string().default("Base Keeper Agent <alerts@resend.dev>"),
   RESEND_API_KEY: z.string().default(""),
   MIN_EXECUTION_NET_PROFIT_USD: z.coerce.number().default(10),
   MIN_EXECUTION_CONFIDENCE: z.enum(["low", "medium", "high"]).default("high"),
 
-  COPILOT_ENABLED: z.coerce.boolean().default(true),
+  COPILOT_ENABLED: BooleanEnv.default(true),
 
-  PAYMASTER_POLICY_ENABLED: z.coerce.boolean().default(true),
-  PAYMASTER_KILL_SWITCH: z.coerce.boolean().default(false),
+  PAYMASTER_POLICY_ENABLED: BooleanEnv.default(true),
+  PAYMASTER_KILL_SWITCH: BooleanEnv.default(false),
   MIN_PAYMASTER_NET_PROFIT_USD: z.coerce.number().default(10),
   MAX_PAYMASTER_GAS_USD: z.coerce.number().default(5),
   MAX_PAYMASTER_GAS_TO_PROFIT_RATIO: z.coerce.number().default(0.3),
   PAYMASTER_DAILY_BUDGET_USD: z.coerce.number().default(50),
   PAYMASTER_DAILY_SPENT_USD: z.coerce.number().default(0),
 
-  SYNTHETIC_TEST_SIGNAL_ENABLED: z.coerce.boolean().default(false),
+  SYNTHETIC_TEST_SIGNAL_ENABLED: BooleanEnv.default(false),
   SYNTHETIC_TEST_MARKET_ID: z.string().default("SYNTHETIC-MARKET")
 });
 
