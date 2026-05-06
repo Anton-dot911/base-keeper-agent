@@ -7,6 +7,7 @@ import { createLogger } from "../../../packages/config/src/logger.js";
 import { buildCopilotSummary } from "../../../packages/copilot/src/index.js";
 import { loadConfiguredMarkets } from "../../../packages/morpho-client/src/market-config.js";
 import { runShadowMorphoScan } from "../../../packages/morpho-client/src/shadow-scanner.js";
+import { buildPaymasterPolicySummary } from "../../../packages/paymaster-policy/src/index.js";
 import { appendJsonl } from "../../../packages/storage/src/jsonl.js";
 import { startHealthServer, type WorkerStatus } from "./health-server.js";
 import { isExecutionReady, sendEmailAlert } from "../../../packages/morpho-client/src/alert-engine.js";
@@ -69,6 +70,9 @@ async function scanOnce(): Promise<void> {
     }
   }
 
+  const paymasterPolicySummary = buildPaymasterPolicySummary(scan.riskSignals);
+  logger.info(paymasterPolicySummary, "Paymaster Policy Summary");
+
   const copilotSummary = config.COPILOT_ENABLED
     ? buildCopilotSummary(scan)
     : null;
@@ -85,6 +89,7 @@ async function scanOnce(): Promise<void> {
     blockNumber: blockNumber.toString(),
     scanDurationMs: Date.now() - startedAt,
     ...scan,
+    paymasterPolicySummary,
     copilotSummary,
     executionEnabled: false,
     timestamp: new Date().toISOString()
