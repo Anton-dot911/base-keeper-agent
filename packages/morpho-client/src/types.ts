@@ -51,6 +51,25 @@ export type PreExecutionSimulation = {
   reason: string;
 };
 
+export type TxSimulationResult = {
+  type: "tx_simulation_result";
+  mode: "skeleton" | "anvil" | "sepolia" | "mainnet_shadow";
+  status:
+    | "skipped"
+    | "calldata_not_ready"
+    | "ready_not_simulated"
+    | "simulated_success"
+    | "simulated_revert"
+    | "simulation_error";
+  attempted: boolean;
+  simulated: boolean;
+  passed: boolean;
+  wouldRevert: boolean | null;
+  gasEstimateUsd: number;
+  netAfterSimulationUsd: number;
+  reason: string;
+};
+
 export type PaymasterPolicyDecision = {
   type: "paymaster_policy_decision";
   mode: "dry_run";
@@ -83,6 +102,7 @@ export type MarketRiskSignal = {
   estimatedProfitUsd: number;
   simulation: LiquidationSimulation;
   preExecution: PreExecutionSimulation;
+  txSimulation: TxSimulationResult;
   paymasterPolicy: PaymasterPolicyDecision;
   executionEnabled: false;
   timestamp: string;
@@ -95,6 +115,7 @@ export type ShadowMorphoScanResult = {
   liquidatablePositions: number;
   profitableSimulations: number;
   preExecutionReady: number;
+  txSimulationReady: number;
   paymasterSponsorReady: number;
   totalEstimatedNetProfitUsd: number;
   riskSignals: MarketRiskSignal[];
