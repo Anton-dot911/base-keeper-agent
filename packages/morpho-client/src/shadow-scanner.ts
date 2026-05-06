@@ -4,16 +4,18 @@ import { evaluatePositionRisk } from "./risk-engine.js";
 import type { ShadowMorphoScanResult } from "./types.js";
 
 export async function runShadowMorphoScan({
-  markets
+  markets,
+  config
 }: {
   client: unknown;
   markets: ConfiguredMarket[];
+  config: Parameters<typeof evaluatePositionRisk>[1];
 }): Promise<ShadowMorphoScanResult> {
   const marketIds = markets.map((m) => m.id);
 
   const positions = await fetchMorphoMarketPositions(marketIds);
 
-  const riskSignals = positions.map((p) => evaluatePositionRisk(p));
+  const riskSignals = positions.map((p) => evaluatePositionRisk(p, config));
 
   const opportunitiesFound = riskSignals.filter(
     (r) => r.riskLevel !== "safe"
@@ -31,10 +33,13 @@ export async function runShadowMorphoScan({
     (r) => r.preExecution.status === "ready_for_tx_simulation"
   ).length;
 
-  const totalEstimatedNetProfitUsd = riskSignals.reduce(
-    (sum, r) => sum + r.simulation.netProfitUsd,
-    0
-  );
+  const paymasterSponsorReady = riskSignals.filter(
+    (r) => r.paymasterPolicy.sponsor
+  ).length;
+
+  const totalEstimatedNetProfitUsd = riskSignals
+    .filter((r) => r.simulation.eligible || r.simulation.profitable)
+    .reduce((sum, r) => sum + Math.max(0, r.simulation.netProfitUsd), 0);
 
   return {
     marketsScanned: markets.length,
@@ -43,6 +48,7 @@ export async function runShadowMorphoScan({
     liquidatablePositions,
     profitableSimulations,
     preExecutionReady,
+    paymasterSponsorReady,
     totalEstimatedNetProfitUsd,
     riskSignals
   };
