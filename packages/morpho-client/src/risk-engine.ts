@@ -1,8 +1,12 @@
 import { MarketRiskSignal, MorphoMarketPosition } from "./types.js";
 import { simulateLiquidation } from "./simulation-engine.js";
 import { simulatePreExecutionReadiness } from "./tx-simulator.js";
+import { evaluatePaymasterPolicy } from "../../paymaster-policy/src/index.js";
 
-export function evaluatePositionRisk(p: MorphoMarketPosition): MarketRiskSignal {
+export function evaluatePositionRisk(
+  p: MorphoMarketPosition,
+  config: Parameters<typeof evaluatePaymasterPolicy>[1]
+): MarketRiskSignal {
   const ltv = p.collateralUsd > 0 ? p.borrowAssetsUsd / p.collateralUsd : null;
 
   let riskLevel: "safe" | "watch" | "critical" = "safe";
@@ -33,8 +37,8 @@ export function evaluatePositionRisk(p: MorphoMarketPosition): MarketRiskSignal 
 
   const estimatedProfit = simulation.netProfitUsd;
 
-  return {
-    type: "market_risk_signal",
+  const signalWithoutPaymaster = {
+    type: "market_risk_signal" as const,
     marketId: p.marketId,
     userAddress: p.userAddress,
     riskLevel,
@@ -54,7 +58,14 @@ export function evaluatePositionRisk(p: MorphoMarketPosition): MarketRiskSignal 
     estimatedProfitUsd: estimatedProfit,
     simulation,
     preExecution,
-    executionEnabled: false,
+    executionEnabled: false as const,
     timestamp: new Date().toISOString()
+  };
+
+  const paymasterPolicy = evaluatePaymasterPolicy(signalWithoutPaymaster as MarketRiskSignal, config);
+
+  return {
+    ...signalWithoutPaymaster,
+    paymasterPolicy
   };
 }
