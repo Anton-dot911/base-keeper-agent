@@ -18,13 +18,11 @@ export async function buildWalletIntelligenceReport({
   const scores = [];
 
   for (const wallet of wallets) {
-    const fills = await fetchUserFillsByTime({
-      wallet,
-      startTime,
-      endTime,
-      infoUrl
-    });
+    const request = infoUrl
+      ? { wallet, startTime, endTime, infoUrl }
+      : { wallet, startTime, endTime };
 
+    const fills = await fetchUserFillsByTime(request);
     const trades = normalizeHyperliquidFills(wallet, fills);
     scores.push(scoreWallet(wallet, trades));
   }
