@@ -25,11 +25,13 @@ export type NormalizedHyperliquidTrade = {
   size: number;
   notionalUsd: number;
   closedPnlUsd: number;
-  feeUsd: number;
+  rawFeeUsd: number;
+  feeCostUsd: number;
   netPnlUsd: number;
   timestamp: string;
   rawTime: number;
   hash: string | null;
+  oid: number | null;
   direction: string | null;
 };
 
@@ -61,6 +63,7 @@ export type WalletIntelligenceReport = {
   type: "hyperliquid_wallet_intelligence_report";
   generatedAt: string;
   lookbackDays: number;
+  chunkHours: number;
   walletsAnalyzed: number;
   topWallets: WalletScore[];
   allWallets: WalletScore[];
