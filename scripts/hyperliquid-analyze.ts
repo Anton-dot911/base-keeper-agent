@@ -22,6 +22,7 @@ function parseNumber(value: string | undefined, fallback: number): number {
 async function main(): Promise<void> {
   const wallets = parseWallets(process.env.HYPERLIQUID_WALLETS);
   const lookbackDays = parseNumber(process.env.HYPERLIQUID_LOOKBACK_DAYS, 30);
+  const chunkHours = parseNumber(process.env.HYPERLIQUID_CHUNK_HOURS, 24);
   const outputPath = process.env.HYPERLIQUID_REPORT_PATH || "data/hyperliquid-wallet-report.json";
   const infoUrl = process.env.HYPERLIQUID_INFO_URL;
 
@@ -35,6 +36,7 @@ async function main(): Promise<void> {
         type: "hyperliquid_analysis_started",
         wallets: wallets.length,
         lookbackDays,
+        chunkHours,
         outputPath
       },
       null,
@@ -45,6 +47,7 @@ async function main(): Promise<void> {
   const report = await buildWalletIntelligenceReport({
     wallets,
     lookbackDays,
+    chunkHours,
     ...(infoUrl ? { infoUrl } : {})
   });
 
@@ -57,6 +60,8 @@ async function main(): Promise<void> {
       {
         type: "hyperliquid_analysis_completed",
         walletsAnalyzed: report.walletsAnalyzed,
+        lookbackDays: report.lookbackDays,
+        chunkHours: report.chunkHours,
         topWallets: report.topWallets.slice(0, 5),
         outputPath: absoluteOutputPath
       },
