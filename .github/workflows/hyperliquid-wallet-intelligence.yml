@@ -1,42 +1,56 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-
-# This workflow will install Deno then run `deno lint` and `deno test`.
-# For more information see: https://github.com/denoland/setup-deno
-
-name: Deno
+name: Hyperliquid Wallet Intelligence
 
 on:
-  push:
-    branches: ["main"]
-  pull_request:
-    branches: ["main"]
-
-permissions:
-  contents: read
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: "Branch containing the Hyperliquid analyzer code"
+        required: true
+        default: "v0.3-hyperliquid-wallet-intelligence"
+      lookback_days:
+        description: "Lookback period in days"
+        required: true
+        default: "30"
+      wallets:
+        description: "Comma-separated Hyperliquid wallet addresses"
+        required: true
+        default: "0xb55428f566567ee1774ee1540347ab355682a919,0xa775d1bd91ee2cc4cae6113e5fd9c0c17b355277,0x6be85ee7a54390f7b6093310c33eab569d64570f,0x49cba59fce90bfdb2ac76f84b6d5144a84bcb3a8,0xa880d6cc607a05ea617307ab3b0d335e8d8424ee,0x2afe745dfd735e24aae8ac39969140dd0511496b,0xaca2d79168f9e9072c089e5f7d6eb0daefc13915,0x0dd5db9c3748486e747c6a123727f472668cf6ee,0x3ac9b030594c1ef23a3e8fed9f62356b7bf98bf6,0xc31ae9521bea6fc46992dc1179ee0aabd025e39d,0xae7a0f9f663bb54bfe95378c7e3de7dd6e28d6bc,0xf5d81a135f756ca16544e53c20fc20643ec3ad53,0x339030695894d065719b8ee501459a467ef1388a,0x9266865bb6afb4c4f618544dd3b8c970f17aa664,0x99c641913b895b0180d6c8ece787a36dd8f99344,0x687feda45b6847763f5bf5c01a2f6c1a3d727f5c,0x21813dd67fecb6dffb3f74bb35c13336bc99a519,0x98daeaed62a12b1a882f515416d358254f166de1,0x24fb6523036ebcb3cc51deff138066dccf6bed0f,0x80196a7475464e06de641df6c66e6e278cd364d5"
 
 jobs:
-  test:
+  analyze:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
-      - name: Setup repo
+      - name: Checkout analyzer branch
         uses: actions/checkout@v4
-
-      - name: Setup Deno
-        # uses: denoland/setup-deno@v1
-        uses: denoland/setup-deno@61fe2df320078202e33d7d5ad347e7dcfa0e8f31  # v1.1.2
         with:
-          deno-version: v1.x
+          ref: ${{ inputs.target_branch }}
 
-      # Uncomment this step to verify the use of 'deno fmt' on each commit.
-      # - name: Verify formatting
-      #   run: deno fmt --check
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
 
-      - name: Run linter
-        run: deno lint
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
 
-      - name: Run tests
-        run: deno test -A
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Hyperliquid wallet analysis
+        env:
+          HYPERLIQUID_LOOKBACK_DAYS: ${{ inputs.lookback_days }}
+          HYPERLIQUID_WALLETS: ${{ inputs.wallets }}
+          HYPERLIQUID_REPORT_PATH: data/hyperliquid-wallet-report.json
+        run: pnpm hyperliquid:analyze
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hyperliquid-wallet-report
+          path: data/hyperliquid-wallet-report.json
+          if-no-files-found: error
