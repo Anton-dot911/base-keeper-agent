@@ -17,7 +17,12 @@ export function normalizeHyperliquidFill(
   const price = toNumber(fill.px);
   const size = toNumber(fill.sz);
   const closedPnlUsd = toNumber(fill.closedPnl);
-  const feeUsd = toNumber(fill.fee);
+  const rawFeeUsd = toNumber(fill.fee);
+
+  // Hyperliquid fee values may be negative depending on API sign convention.
+  // For wallet scoring we use a conservative cost view so rebates or negative fees
+  // cannot turn an otherwise losing trader into a false positive.
+  const feeCostUsd = Math.abs(rawFeeUsd);
 
   return {
     platform: "hyperliquid",
@@ -28,11 +33,13 @@ export function normalizeHyperliquidFill(
     size,
     notionalUsd: price * size,
     closedPnlUsd,
-    feeUsd,
-    netPnlUsd: closedPnlUsd - feeUsd,
+    rawFeeUsd,
+    feeCostUsd,
+    netPnlUsd: closedPnlUsd - feeCostUsd,
     timestamp: new Date(fill.time).toISOString(),
     rawTime: fill.time,
     hash: fill.hash ?? null,
+    oid: fill.oid ?? null,
     direction: fill.dir ?? null
   };
 }
