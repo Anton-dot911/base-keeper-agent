@@ -59,7 +59,7 @@ export function scoreWallet(
   const grossLossUsd = pnlValues.filter((pnl) => pnl < 0).reduce((sum, pnl) => sum + Math.abs(pnl), 0);
   const totalNetPnlUsd = pnlValues.reduce((sum, pnl) => sum + pnl, 0);
   const totalClosedPnlUsd = trades.reduce((sum, trade) => sum + trade.closedPnlUsd, 0);
-  const totalFeesUsd = trades.reduce((sum, trade) => sum + trade.feeUsd, 0);
+  const totalFeesUsd = trades.reduce((sum, trade) => sum + trade.feeCostUsd, 0);
   const tradesAnalyzed = trades.length;
   const winRate = tradesAnalyzed > 0 ? wins / tradesAnalyzed : 0;
   const profitFactor = grossLossUsd > 0 ? grossProfitUsd / grossLossUsd : grossProfitUsd > 0 ? null : 0;
@@ -82,6 +82,7 @@ export function scoreWallet(
 
   const reasons: string[] = [];
   if (tradesAnalyzed < 30) reasons.push("sample_size_below_30");
+  if (activeDays < 3) reasons.push("active_days_below_3");
   if (winRate < 0.55) reasons.push("win_rate_below_55pct");
   if ((profitFactor ?? 0) < 1.3) reasons.push("profit_factor_below_1_3");
   if (medianPnlUsd <= 0) reasons.push("median_pnl_not_positive");
