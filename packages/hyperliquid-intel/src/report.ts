@@ -1,15 +1,19 @@
-import { fetchUserFillsByTime } from "./fills-reader.js";
+import { fetchUserFillsByTimeChunked } from "./fills-reader.js";
 import { normalizeHyperliquidFills } from "./trade-normalizer.js";
 import { scoreWallet } from "./wallet-score.js";
 import type { WalletIntelligenceReport } from "./types.js";
 
+const DEFAULT_CHUNK_HOURS = 24;
+
 export async function buildWalletIntelligenceReport({
   wallets,
   lookbackDays,
+  chunkHours = DEFAULT_CHUNK_HOURS,
   infoUrl
 }: {
   wallets: string[];
   lookbackDays: number;
+  chunkHours?: number;
   infoUrl?: string;
 }): Promise<WalletIntelligenceReport> {
   const endTime = Date.now();
@@ -19,10 +23,10 @@ export async function buildWalletIntelligenceReport({
 
   for (const wallet of wallets) {
     const request = infoUrl
-      ? { wallet, startTime, endTime, infoUrl }
-      : { wallet, startTime, endTime };
+      ? { wallet, startTime, endTime, chunkHours, infoUrl }
+      : { wallet, startTime, endTime, chunkHours };
 
-    const fills = await fetchUserFillsByTime(request);
+    const fills = await fetchUserFillsByTimeChunked(request);
     const trades = normalizeHyperliquidFills(wallet, fills);
     scores.push(scoreWallet(wallet, trades));
   }
@@ -33,6 +37,7 @@ export async function buildWalletIntelligenceReport({
     type: "hyperliquid_wallet_intelligence_report",
     generatedAt: new Date().toISOString(),
     lookbackDays,
+    chunkHours,
     walletsAnalyzed: wallets.length,
     topWallets: allWallets.slice(0, 20),
     allWallets
