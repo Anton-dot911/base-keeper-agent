@@ -4,10 +4,13 @@ import { base } from "viem/chains";
 
 import { loadConfig } from "../../../packages/config/src/env.js";
 import { createLogger } from "../../../packages/config/src/logger.js";
+import { buildCopilotSummary } from "../../../packages/copilot/src/index.js";
 import { loadConfiguredMarkets } from "../../../packages/morpho-client/src/market-config.js";
 import { runShadowMorphoScan } from "../../../packages/morpho-client/src/shadow-scanner.js";
+import { buildPaymasterPolicySummary } from "../../../packages/paymaster-policy/src/index.js";
 import { appendJsonl } from "../../../packages/storage/src/jsonl.js";
 import { startHealthServer, type WorkerStatus } from "./health-server.js";
+import { isExecutionReady, sendEmailAlert } from "../../../packages/morpho-client/src/alert-engine.js";
 
 const config = loadConfig();
 const logger = createLogger(config.LOG_LEVEL);
@@ -34,12 +37,61 @@ const client = createPublicClient({
 
 startHealthServer(port, () => status);
 
+function rawEnvTrue(name: string): boolean {
+  return process.env[name]?.trim().toLowerCase() === "true";
+}
+
+async function sendStartupTestEmail() {
+  const startupTestEmailEnabled = rawEnvTrue("ALERT_EMAIL_TEST_ON_STARTUP");
+
+  if (!startupTestEmailEnabled) {
+    logger.info(
+      { startupTestEmailEnabled: false },
+      "Startup test email disabled"
+    );
+    return;
+  }
+
+  logger.info({ startupTestEmailEnabled: true }, "Sending startup test email...");
+
+  await sendEmailAlert(
+    {
+      marketId: "TEST",
+      userAddress: "TEST",
+      healthFactor: 0.99,
+      simulation: {
+        netProfitUsd: 42,
+        confidence: "high"
+      }
+    },
+    config
+  );
+}
+
 async function scanOnce(): Promise<void> {
   const startedAt = Date.now();
 
   const blockNumber = await client.getBlockNumber();
   const markets = loadConfiguredMarkets(config.morphoMarketIds);
-  const scan = await runShadowMorphoScan({ client, markets });
+  const scan = await runShadowMorphoScan({ client, markets, config });
+
+  for (const signal of scan.riskSignals) {
+    if (isExecutionReady(signal, config)) {
+      logger.info(signal, "🔥 EXECUTION READY");
+      await sendEmailAlert(signal, config);
+    }
+  }
+
+  const paymasterPolicySummary = buildPaymasterPolicySummary(scan.riskSignals);
+  logger.info(paymasterPolicySummary, "Paymaster Policy Summary");
+
+  const copilotSummary = config.COPILOT_ENABLED
+    ? buildCopilotSummary(scan)
+    : null;
+
+  if (copilotSummary) {
+    logger.info(copilotSummary, "Keeper Copilot summary");
+  }
 
   const event = {
     type: "scan_completed",
@@ -49,6 +101,8 @@ async function scanOnce(): Promise<void> {
     blockNumber: blockNumber.toString(),
     scanDurationMs: Date.now() - startedAt,
     ...scan,
+    paymasterPolicySummary,
+    copilotSummary,
     executionEnabled: false,
     timestamp: new Date().toISOString()
   };
@@ -72,10 +126,17 @@ async function main(): Promise<void> {
       scanIntervalMs: config.SCAN_INTERVAL_MS,
       executionEnabled: false,
       noPrivateKey: config.NO_PRIVATE_KEY,
-      marketsConfigured: config.morphoMarketIds.length
+      marketsConfigured: config.morphoMarketIds.length,
+      copilotEnabled: config.COPILOT_ENABLED,
+      paymasterPolicyEnabled: config.PAYMASTER_POLICY_ENABLED,
+      paymasterKillSwitch: config.PAYMASTER_KILL_SWITCH,
+      startupTestEmailEnabled: rawEnvTrue("ALERT_EMAIL_TEST_ON_STARTUP"),
+      syntheticTestSignalEnabled: rawEnvTrue("SYNTHETIC_TEST_SIGNAL_ENABLED")
     },
     "Keeper worker starting"
   );
+
+  await sendStartupTestEmail();
 
   while (true) {
     try {
