@@ -1,4 +1,4 @@
-import type { NormalizedHyperliquidTrade, WalletScore } from "./types.js";
+import type { CoinPerformance, NormalizedHyperliquidTrade, WalletScore } from "./types.js";
 
 function round(value: number, digits = 4): number {
   return Number(value.toFixed(digits));
@@ -15,6 +15,56 @@ function median(values: number[]): number {
 
 function uniqueActiveDays(trades: NormalizedHyperliquidTrade[]): number {
   return new Set(trades.map((trade) => trade.timestamp.slice(0, 10))).size;
+}
+
+function profitFactorFromPnls(pnls: number[]): number | null {
+  const grossProfitUsd = pnls.filter((pnl) => pnl > 0).reduce((sum, pnl) => sum + pnl, 0);
+  const grossLossUsd = pnls.filter((pnl) => pnl < 0).reduce((sum, pnl) => sum + Math.abs(pnl), 0);
+
+  if (grossLossUsd > 0) return grossProfitUsd / grossLossUsd;
+  if (grossProfitUsd > 0) return null;
+  return 0;
+}
+
+function buildCoinPerformance(trades: NormalizedHyperliquidTrade[]): CoinPerformance[] {
+  const byCoin = new Map<string, NormalizedHyperliquidTrade[]>();
+
+  for (const trade of trades) {
+    const existing = byCoin.get(trade.coin) ?? [];
+    existing.push(trade);
+    byCoin.set(trade.coin, existing);
+  }
+
+  return [...byCoin.entries()]
+    .map(([coin, coinTrades]) => {
+      const pnlValues = coinTrades.map((trade) => trade.netPnlUsd);
+      const wins = pnlValues.filter((pnl) => pnl > 0).length;
+      const losses = pnlValues.filter((pnl) => pnl < 0).length;
+      const totalNetPnlUsd = pnlValues.reduce((sum, pnl) => sum + pnl, 0);
+      const tradesCount = coinTrades.length;
+      const averagePnlUsd = tradesCount > 0 ? totalNetPnlUsd / tradesCount : 0;
+      const largestWinUsd = pnlValues.length > 0 ? Math.max(...pnlValues) : 0;
+      const largestLossUsd = pnlValues.length > 0 ? Math.min(...pnlValues) : 0;
+      const profitFactor = profitFactorFromPnls(pnlValues);
+
+      return {
+        coin,
+        trades: tradesCount,
+        wins,
+        losses,
+        winRate: round(tradesCount > 0 ? wins / tradesCount : 0, 4),
+        totalNetPnlUsd: round(totalNetPnlUsd, 2),
+        totalClosedPnlUsd: round(coinTrades.reduce((sum, trade) => sum + trade.closedPnlUsd, 0), 2),
+        totalFeesUsd: round(coinTrades.reduce((sum, trade) => sum + trade.feeCostUsd, 0), 2),
+        totalNotionalUsd: round(coinTrades.reduce((sum, trade) => sum + trade.notionalUsd, 0), 2),
+        averagePnlUsd: round(averagePnlUsd, 2),
+        medianPnlUsd: round(median(pnlValues), 2),
+        largestWinUsd: round(largestWinUsd, 2),
+        largestLossUsd: round(largestLossUsd, 2),
+        profitFactor: profitFactor === null ? null : round(profitFactor, 4)
+      };
+    })
+    .sort((a, b) => b.totalNetPnlUsd - a.totalNetPnlUsd);
 }
 
 function estimateConsistencyScore({
@@ -69,6 +119,7 @@ export function scoreWallet(
   const largestWinUsd = pnlValues.length > 0 ? Math.max(...pnlValues) : 0;
   const largestLossUsd = pnlValues.length > 0 ? Math.min(...pnlValues) : 0;
   const lastActiveAt = trades.length > 0 ? trades[trades.length - 1].timestamp : null;
+  const coinPerformance = buildCoinPerformance(trades);
 
   const consistencyScore = estimateConsistencyScore({
     tradesAnalyzed,
@@ -123,6 +174,8 @@ export function scoreWallet(
     consistencyScore,
     copyRisk,
     recommendation,
-    reasons
+    reasons,
+    topCoinsByNetPnl: coinPerformance.slice(0, 10),
+    worstCoinsByNetPnl: [...coinPerformance].sort((a, b) => a.totalNetPnlUsd - b.totalNetPnlUsd).slice(0, 10)
   };
 }
