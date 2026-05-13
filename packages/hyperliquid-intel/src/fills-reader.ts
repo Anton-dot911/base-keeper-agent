@@ -2,7 +2,7 @@ import { createHyperliquidInfoClient } from "./client.js";
 import type { HyperliquidFill } from "./types.js";
 
 const DEFAULT_CHUNK_HOURS = 24;
-const CHUNK_DELAY_MS = 250;
+const DEFAULT_CHUNK_DELAY_MS = 3_000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -38,12 +38,14 @@ export async function fetchUserFillsByTimeChunked({
   startTime,
   endTime,
   chunkHours = DEFAULT_CHUNK_HOURS,
+  chunkDelayMs = DEFAULT_CHUNK_DELAY_MS,
   infoUrl
 }: {
   wallet: string;
   startTime: number;
   endTime: number;
   chunkHours?: number;
+  chunkDelayMs?: number;
   infoUrl?: string;
 }): Promise<HyperliquidFill[]> {
   const chunkMs = chunkHours * 60 * 60 * 1000;
@@ -62,7 +64,7 @@ export async function fetchUserFillsByTimeChunked({
     }
 
     if (chunkStart + chunkMs < endTime) {
-      await sleep(CHUNK_DELAY_MS);
+      await sleep(chunkDelayMs);
     }
   }
 
