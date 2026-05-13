@@ -89,3 +89,29 @@ export type WalletIntelligenceReport = {
   topWallets: WalletScore[];
   allWallets: WalletScore[];
 };
+
+export type HyperliquidWatchlistSignal = {
+  type: "hyperliquid_watchlist_signal";
+  wallet: string;
+  coin: string;
+  side: HyperliquidSide;
+  price: number;
+  size: number;
+  notionalUsd: number;
+  direction: string | null;
+  hash: string | null;
+  oid: number | null;
+  fillTime: string;
+  detectedAt: string;
+  decision: "paper_watch" | "skip";
+  reason: string;
+};
+
+export type HyperliquidWatchlistReport = {
+  type: "hyperliquid_watchlist_report";
+  generatedAt: string;
+  lookbackMinutes: number;
+  walletsWatched: number;
+  fillsDetected: number;
+  signals: HyperliquidWatchlistSignal[];
+};
