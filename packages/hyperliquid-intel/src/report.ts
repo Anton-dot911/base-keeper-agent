@@ -52,6 +52,8 @@ export async function buildWalletIntelligenceReport({
   }
 
   const allWallets = scores.sort((a, b) => b.consistencyScore - a.consistencyScore);
+  const candidateWallets = allWallets.filter((wallet) => wallet.recommendation === "candidate");
+  const watchWallets = allWallets.filter((wallet) => wallet.recommendation === "watch");
 
   return {
     type: "hyperliquid_wallet_intelligence_report",
@@ -59,6 +61,8 @@ export async function buildWalletIntelligenceReport({
     lookbackDays,
     chunkHours,
     walletsAnalyzed: wallets.length,
+    candidateWallets,
+    watchWallets,
     topWallets: allWallets.slice(0, 20),
     allWallets
   };
