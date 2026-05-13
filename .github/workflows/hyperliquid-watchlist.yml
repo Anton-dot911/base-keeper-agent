@@ -1,0 +1,60 @@
+name: Hyperliquid Live Watchlist
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: "Branch containing the Hyperliquid watchlist code"
+        required: true
+        default: "v0.3.1-hyperliquid-live-watchlist"
+      lookback_minutes:
+        description: "How many recent minutes to inspect"
+        required: true
+        default: "15"
+      strong_coins:
+        description: "Comma-separated coins allowed for paper-watch signals"
+        required: true
+        default: "ETH,BTC"
+      wallets:
+        description: "Comma-separated Hyperliquid watchlist wallet addresses"
+        required: true
+        default: "0xae7a0f9f663bb54bfe95378c7e3de7dd6e28d6bc,0x49cba59fce90bfdb2ac76f84b6d5144a84bcb3a8"
+
+jobs:
+  watchlist:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout watchlist branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target_branch }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Run Hyperliquid live watchlist
+        env:
+          HYPERLIQUID_WATCHLIST_LOOKBACK_MINUTES: ${{ inputs.lookback_minutes }}
+          HYPERLIQUID_WATCHLIST_WALLETS: ${{ inputs.wallets }}
+          HYPERLIQUID_WATCHLIST_STRONG_COINS: ${{ inputs.strong_coins }}
+          HYPERLIQUID_WATCHLIST_REPORT_PATH: data/hyperliquid-watchlist-report.json
+        run: pnpm hyperliquid:watchlist
+
+      - name: Upload watchlist report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hyperliquid-watchlist-report
+          path: data/hyperliquid-watchlist-report.json
+          if-no-files-found: error
