@@ -35,6 +35,23 @@ export type NormalizedHyperliquidTrade = {
   direction: string | null;
 };
 
+export type CoinPerformance = {
+  coin: string;
+  trades: number;
+  wins: number;
+  losses: number;
+  winRate: number;
+  totalNetPnlUsd: number;
+  totalClosedPnlUsd: number;
+  totalFeesUsd: number;
+  totalNotionalUsd: number;
+  averagePnlUsd: number;
+  medianPnlUsd: number;
+  largestWinUsd: number;
+  largestLossUsd: number;
+  profitFactor: number | null;
+};
+
 export type WalletScore = {
   wallet: string;
   tradesAnalyzed: number;
@@ -57,6 +74,8 @@ export type WalletScore = {
   copyRisk: "low" | "medium" | "high";
   recommendation: "watch" | "candidate" | "skip";
   reasons: string[];
+  topCoinsByNetPnl: CoinPerformance[];
+  worstCoinsByNetPnl: CoinPerformance[];
 };
 
 export type WalletIntelligenceReport = {
@@ -65,6 +84,8 @@ export type WalletIntelligenceReport = {
   lookbackDays: number;
   chunkHours: number;
   walletsAnalyzed: number;
+  candidateWallets: WalletScore[];
+  watchWallets: WalletScore[];
   topWallets: WalletScore[];
   allWallets: WalletScore[];
 };
