@@ -13,6 +13,7 @@
     "health": "tsx scripts/check-health.ts",
     "hyperliquid:analyze": "tsx scripts/hyperliquid-analyze.ts",
     "hyperliquid:watchlist": "tsx scripts/hyperliquid-watchlist.ts",
+    "hyperliquid:paper": "tsx scripts/hyperliquid-paper-trading.ts",
     "docker:build": "docker build -t base-keeper-agent .",
     "docker:run": "docker run --rm --env-file .env -p 8080:8080 base-keeper-agent"
   },
