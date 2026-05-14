@@ -170,3 +170,49 @@ export type HyperliquidPaperTradingReport = {
   averageEstimatedReturnBps: number | null;
   trades: HyperliquidPaperTrade[];
 };
+
+export type HyperliquidPaperLifecycleCheckpoint = {
+  label: string;
+  delaySeconds: number;
+  checkedAt: string;
+  markPrice: number | null;
+  estimatedPnlUsd: number | null;
+  estimatedReturnBps: number | null;
+  status: "winning" | "losing" | "flat" | "unpriced";
+  decision: "paper_hold" | "paper_take_profit" | "paper_cut" | "unpriced";
+};
+
+export type HyperliquidPaperLifecyclePosition = {
+  type: "hyperliquid_paper_lifecycle_position";
+  id: string;
+  wallet: string;
+  coin: string;
+  direction: string;
+  positionSide: "long" | "short" | "unknown";
+  entryPrice: number;
+  size: number;
+  notionalUsd: number;
+  openedAt: string;
+  sourceEvent: HyperliquidTradeEvent;
+  checkpoints: HyperliquidPaperLifecycleCheckpoint[];
+  finalStatus: "winning" | "losing" | "flat" | "unpriced";
+  finalDecision: "paper_hold" | "paper_take_profit" | "paper_cut" | "unpriced";
+  finalEstimatedPnlUsd: number | null;
+  finalEstimatedReturnBps: number | null;
+  maxFavorablePnlUsd: number | null;
+  maxAdversePnlUsd: number | null;
+};
+
+export type HyperliquidPaperLifecycleReport = {
+  type: "hyperliquid_paper_lifecycle_report";
+  generatedAt: string;
+  sourceGeneratedAt: string;
+  checkpointScheduleSeconds: number[];
+  positionsTracked: number;
+  pricedPositions: number;
+  winningPositions: number;
+  losingPositions: number;
+  totalFinalEstimatedPnlUsd: number;
+  averageFinalEstimatedReturnBps: number | null;
+  positions: HyperliquidPaperLifecyclePosition[];
+};
