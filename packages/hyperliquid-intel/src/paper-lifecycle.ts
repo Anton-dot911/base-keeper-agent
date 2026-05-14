@@ -86,19 +86,17 @@ function checkpointDecision(estimatedReturnBps: number | null): {
   return { status: "flat", decision: "paper_hold" };
 }
 
-async function buildCheckpoint({
+function buildCheckpoint({
   event,
   label,
   delaySeconds,
-  infoUrl
+  markPrice
 }: {
   event: HyperliquidTradeEvent;
   label: string;
   delaySeconds: number;
-  infoUrl?: string;
-}): Promise<HyperliquidPaperLifecycleCheckpoint> {
-  const mids = await fetchAllMids({ ...(infoUrl ? { infoUrl } : {}) });
-  const markPrice = mids[event.coin] ?? null;
+  markPrice: number | null;
+}): HyperliquidPaperLifecycleCheckpoint {
   const positionSide = positionSideFromDirection(event.direction);
   const estimatedPnlUsd =
     markPrice === null
@@ -127,40 +125,7 @@ async function buildCheckpoint({
   };
 }
 
-async function trackLifecyclePosition({
-  event,
-  checkpointScheduleSeconds,
-  infoUrl
-}: {
-  event: HyperliquidTradeEvent;
-  checkpointScheduleSeconds: number[];
-  infoUrl?: string;
-}): Promise<HyperliquidPaperLifecyclePosition> {
-  const checkpoints: HyperliquidPaperLifecycleCheckpoint[] = [];
-  let previousDelaySeconds = 0;
-
-  for (const delaySeconds of checkpointScheduleSeconds) {
-    const waitMs = Math.max(0, delaySeconds - previousDelaySeconds) * 1000;
-    if (waitMs > 0) {
-      await sleep(waitMs);
-    }
-
-    checkpoints.push(
-      await buildCheckpoint({
-        event,
-        label: `${delaySeconds}s`,
-        delaySeconds,
-        ...(infoUrl ? { infoUrl } : {})
-      })
-    );
-    previousDelaySeconds = delaySeconds;
-  }
-
-  const finalCheckpoint = checkpoints[checkpoints.length - 1];
-  const pricedPnlValues = checkpoints
-    .map((checkpoint) => checkpoint.estimatedPnlUsd)
-    .filter((pnl): pnl is number => pnl !== null);
-
+function createLifecyclePosition(event: HyperliquidTradeEvent): HyperliquidPaperLifecyclePosition {
   return {
     type: "hyperliquid_paper_lifecycle_position",
     id: positionId(event),
@@ -173,7 +138,26 @@ async function trackLifecyclePosition({
     notionalUsd: event.totalNotionalUsd,
     openedAt: event.lastFillTime,
     sourceEvent: event,
-    checkpoints,
+    checkpoints: [],
+    finalStatus: "unpriced",
+    finalDecision: "unpriced",
+    finalEstimatedPnlUsd: null,
+    finalEstimatedReturnBps: null,
+    maxFavorablePnlUsd: null,
+    maxAdversePnlUsd: null
+  };
+}
+
+function finalizeLifecyclePosition(
+  position: HyperliquidPaperLifecyclePosition
+): HyperliquidPaperLifecyclePosition {
+  const finalCheckpoint = position.checkpoints[position.checkpoints.length - 1];
+  const pricedPnlValues = position.checkpoints
+    .map((checkpoint) => checkpoint.estimatedPnlUsd)
+    .filter((pnl): pnl is number => pnl !== null);
+
+  return {
+    ...position,
     finalStatus: finalCheckpoint?.status ?? "unpriced",
     finalDecision: finalCheckpoint?.decision ?? "unpriced",
     finalEstimatedPnlUsd: finalCheckpoint?.estimatedPnlUsd ?? null,
@@ -203,19 +187,33 @@ export async function buildPaperLifecycleReport({
     .sort((a, b) => b.totalNotionalUsd - a.totalNotionalUsd)
     .slice(0, maxPositions ?? undefined);
 
-  const positions: HyperliquidPaperLifecyclePosition[] = [];
+  const positions = entryEvents.map((event) => createLifecyclePosition(event));
+  let previousDelaySeconds = 0;
 
-  for (const event of entryEvents) {
-    positions.push(
-      await trackLifecyclePosition({
-        event,
-        checkpointScheduleSeconds: sortedSchedule,
-        ...(infoUrl ? { infoUrl } : {})
-      })
-    );
+  for (const delaySeconds of sortedSchedule) {
+    const waitMs = Math.max(0, delaySeconds - previousDelaySeconds) * 1000;
+    if (waitMs > 0) {
+      await sleep(waitMs);
+    }
+
+    const mids = await fetchAllMids({ ...(infoUrl ? { infoUrl } : {}) });
+
+    for (const position of positions) {
+      position.checkpoints.push(
+        buildCheckpoint({
+          event: position.sourceEvent,
+          label: `${delaySeconds}s`,
+          delaySeconds,
+          markPrice: mids[position.coin] ?? null
+        })
+      );
+    }
+
+    previousDelaySeconds = delaySeconds;
   }
 
-  const pricedPositions = positions.filter((position) => position.finalEstimatedPnlUsd !== null);
+  const finalizedPositions = positions.map((position) => finalizeLifecyclePosition(position));
+  const pricedPositions = finalizedPositions.filter((position) => position.finalEstimatedPnlUsd !== null);
   const totalFinalEstimatedPnlUsd = pricedPositions.reduce(
     (sum, position) => sum + (position.finalEstimatedPnlUsd ?? 0),
     0
@@ -233,14 +231,14 @@ export async function buildPaperLifecycleReport({
     generatedAt: new Date().toISOString(),
     sourceGeneratedAt: watchlistReport.generatedAt,
     checkpointScheduleSeconds: sortedSchedule,
-    positionsTracked: positions.length,
+    positionsTracked: finalizedPositions.length,
     pricedPositions: pricedPositions.length,
     winningPositions: pricedPositions.filter((position) => (position.finalEstimatedPnlUsd ?? 0) > 0).length,
     losingPositions: pricedPositions.filter((position) => (position.finalEstimatedPnlUsd ?? 0) < 0).length,
     totalFinalEstimatedPnlUsd: round(totalFinalEstimatedPnlUsd, 2),
     averageFinalEstimatedReturnBps:
       averageFinalEstimatedReturnBps === null ? null : round(averageFinalEstimatedReturnBps, 2),
-    positions: positions.sort(
+    positions: finalizedPositions.sort(
       (a, b) => Math.abs(b.finalEstimatedPnlUsd ?? 0) - Math.abs(a.finalEstimatedPnlUsd ?? 0)
     )
   };
