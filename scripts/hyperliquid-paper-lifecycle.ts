@@ -32,6 +32,7 @@ async function main(): Promise<void> {
     [0, 60, 300]
   );
   const maxPositions = parseNumber(process.env.HYPERLIQUID_PAPER_LIFECYCLE_MAX_POSITIONS, 10);
+  const maxEntryAgeSeconds = parseNumber(process.env.HYPERLIQUID_PAPER_LIFECYCLE_MAX_ENTRY_AGE_SECONDS, 120);
   const infoUrl = process.env.HYPERLIQUID_INFO_URL;
 
   console.log(
@@ -41,7 +42,8 @@ async function main(): Promise<void> {
         inputPath,
         outputPath,
         checkpointScheduleSeconds,
-        maxPositions
+        maxPositions,
+        maxEntryAgeSeconds
       },
       null,
       2
@@ -55,6 +57,7 @@ async function main(): Promise<void> {
     watchlistReport,
     checkpointScheduleSeconds,
     maxPositions,
+    maxEntryAgeSeconds,
     ...(infoUrl ? { infoUrl } : {})
   });
 
@@ -66,6 +69,8 @@ async function main(): Promise<void> {
     JSON.stringify(
       {
         type: "hyperliquid_paper_lifecycle_completed",
+        paperEntryEventsSeen: report.paperEntryEventsSeen,
+        staleEntryEventsSkipped: report.staleEntryEventsSkipped,
         positionsTracked: report.positionsTracked,
         pricedPositions: report.pricedPositions,
         winningPositions: report.winningPositions,
