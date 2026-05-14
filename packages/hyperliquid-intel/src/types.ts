@@ -107,11 +107,34 @@ export type HyperliquidWatchlistSignal = {
   reason: string;
 };
 
+export type HyperliquidTradeEvent = {
+  type: "hyperliquid_trade_event";
+  wallet: string;
+  coin: string;
+  direction: string;
+  side: HyperliquidSide;
+  eventKind: "entry" | "exit" | "unknown";
+  decision: "paper_entry" | "paper_exit" | "skip";
+  reason: string;
+  fills: number;
+  totalSize: number;
+  totalNotionalUsd: number;
+  averagePrice: number;
+  firstFillTime: string;
+  lastFillTime: string;
+  oids: number[];
+  hashes: string[];
+};
+
 export type HyperliquidWatchlistReport = {
   type: "hyperliquid_watchlist_report";
   generatedAt: string;
   lookbackMinutes: number;
   walletsWatched: number;
   fillsDetected: number;
+  eventsDetected: number;
+  paperEntryEvents: number;
+  paperExitEvents: number;
   signals: HyperliquidWatchlistSignal[];
+  events: HyperliquidTradeEvent[];
 };
