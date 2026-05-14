@@ -23,6 +23,7 @@ async function main(): Promise<void> {
   const wallets = parseList(process.env.HYPERLIQUID_WATCHLIST_WALLETS);
   const strongCoins = parseList(process.env.HYPERLIQUID_WATCHLIST_STRONG_COINS || "ETH,BTC");
   const lookbackMinutes = parseNumber(process.env.HYPERLIQUID_WATCHLIST_LOOKBACK_MINUTES, 15);
+  const minEventNotionalUsd = parseNumber(process.env.HYPERLIQUID_WATCHLIST_MIN_EVENT_NOTIONAL_USD, 500);
   const outputPath = process.env.HYPERLIQUID_WATCHLIST_REPORT_PATH || "data/hyperliquid-watchlist-report.json";
   const infoUrl = process.env.HYPERLIQUID_INFO_URL;
 
@@ -37,6 +38,7 @@ async function main(): Promise<void> {
         wallets: wallets.length,
         strongCoins,
         lookbackMinutes,
+        minEventNotionalUsd,
         outputPath
       },
       null,
@@ -48,6 +50,7 @@ async function main(): Promise<void> {
     wallets,
     strongCoins,
     lookbackMinutes,
+    minEventNotionalUsd,
     ...(infoUrl ? { infoUrl } : {})
   });
 
@@ -61,9 +64,12 @@ async function main(): Promise<void> {
         type: "hyperliquid_watchlist_completed",
         walletsWatched: report.walletsWatched,
         fillsDetected: report.fillsDetected,
+        eventsDetected: report.eventsDetected,
+        paperEntryEvents: report.paperEntryEvents,
+        paperExitEvents: report.paperExitEvents,
         paperWatchSignals: report.signals.filter((signal) => signal.decision === "paper_watch").length,
         outputPath: absoluteOutputPath,
-        signals: report.signals.slice(0, 20)
+        events: report.events.slice(0, 20)
       },
       null,
       2
