@@ -174,6 +174,7 @@ export type HyperliquidPaperTradingReport = {
 export type HyperliquidPaperLifecycleCheckpoint = {
   label: string;
   delaySeconds: number;
+  actualAgeSeconds: number;
   checkedAt: string;
   markPrice: number | null;
   estimatedPnlUsd: number | null;
@@ -193,6 +194,7 @@ export type HyperliquidPaperLifecyclePosition = {
   size: number;
   notionalUsd: number;
   openedAt: string;
+  entryAgeAtStartSeconds: number;
   sourceEvent: HyperliquidTradeEvent;
   checkpoints: HyperliquidPaperLifecycleCheckpoint[];
   finalStatus: "winning" | "losing" | "flat" | "unpriced";
@@ -208,6 +210,9 @@ export type HyperliquidPaperLifecycleReport = {
   generatedAt: string;
   sourceGeneratedAt: string;
   checkpointScheduleSeconds: number[];
+  maxEntryAgeSeconds: number;
+  paperEntryEventsSeen: number;
+  staleEntryEventsSkipped: number;
   positionsTracked: number;
   pricedPositions: number;
   winningPositions: number;
