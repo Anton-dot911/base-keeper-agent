@@ -138,3 +138,35 @@ export type HyperliquidWatchlistReport = {
   signals: HyperliquidWatchlistSignal[];
   events: HyperliquidTradeEvent[];
 };
+
+export type HyperliquidPaperTrade = {
+  type: "hyperliquid_paper_trade";
+  wallet: string;
+  coin: string;
+  direction: string;
+  positionSide: "long" | "short" | "unknown";
+  entryPrice: number;
+  markPrice: number | null;
+  size: number;
+  notionalUsd: number;
+  estimatedPnlUsd: number | null;
+  estimatedReturnBps: number | null;
+  ageMinutes: number;
+  status: "winning" | "losing" | "flat" | "unpriced";
+  decision: "paper_hold" | "paper_take_profit" | "paper_cut" | "unpriced";
+  reason: string;
+  sourceEvent: HyperliquidTradeEvent;
+};
+
+export type HyperliquidPaperTradingReport = {
+  type: "hyperliquid_paper_trading_report";
+  generatedAt: string;
+  sourceGeneratedAt: string;
+  tradesEvaluated: number;
+  pricedTrades: number;
+  winningTrades: number;
+  losingTrades: number;
+  totalEstimatedPnlUsd: number;
+  averageEstimatedReturnBps: number | null;
+  trades: HyperliquidPaperTrade[];
+};
