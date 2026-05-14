@@ -9,6 +9,7 @@ import type {
 
 const DEFAULT_TAKE_PROFIT_BPS = 25;
 const DEFAULT_STOP_LOSS_BPS = -25;
+const DEFAULT_MAX_ENTRY_AGE_SECONDS = 120;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -37,6 +38,10 @@ function positionId(event: HyperliquidTradeEvent): string {
     event.averagePrice,
     event.totalSize
   ].join(":");
+}
+
+function eventAgeSeconds(event: HyperliquidTradeEvent, now: number): number {
+  return Math.max(0, (now - Date.parse(event.lastFillTime)) / 1000);
 }
 
 function estimatePnl({
@@ -90,11 +95,13 @@ function buildCheckpoint({
   event,
   label,
   delaySeconds,
+  actualAgeSeconds,
   markPrice
 }: {
   event: HyperliquidTradeEvent;
   label: string;
   delaySeconds: number;
+  actualAgeSeconds: number;
   markPrice: number | null;
 }): HyperliquidPaperLifecycleCheckpoint {
   const positionSide = positionSideFromDirection(event.direction);
@@ -116,6 +123,7 @@ function buildCheckpoint({
   return {
     label,
     delaySeconds,
+    actualAgeSeconds: round(actualAgeSeconds, 2),
     checkedAt: new Date().toISOString(),
     markPrice,
     estimatedPnlUsd: estimatedPnlUsd === null ? null : round(estimatedPnlUsd, 2),
@@ -125,7 +133,13 @@ function buildCheckpoint({
   };
 }
 
-function createLifecyclePosition(event: HyperliquidTradeEvent): HyperliquidPaperLifecyclePosition {
+function createLifecyclePosition({
+  event,
+  now
+}: {
+  event: HyperliquidTradeEvent;
+  now: number;
+}): HyperliquidPaperLifecyclePosition {
   return {
     type: "hyperliquid_paper_lifecycle_position",
     id: positionId(event),
@@ -137,6 +151,7 @@ function createLifecyclePosition(event: HyperliquidTradeEvent): HyperliquidPaper
     size: event.totalSize,
     notionalUsd: event.totalNotionalUsd,
     openedAt: event.lastFillTime,
+    entryAgeAtStartSeconds: round(eventAgeSeconds(event, now), 2),
     sourceEvent: event,
     checkpoints: [],
     finalStatus: "unpriced",
@@ -171,23 +186,31 @@ export async function buildPaperLifecycleReport({
   watchlistReport,
   checkpointScheduleSeconds,
   maxPositions,
+  maxEntryAgeSeconds = DEFAULT_MAX_ENTRY_AGE_SECONDS,
   infoUrl
 }: {
   watchlistReport: HyperliquidWatchlistReport;
   checkpointScheduleSeconds: number[];
   maxPositions?: number;
+  maxEntryAgeSeconds?: number;
   infoUrl?: string;
 }): Promise<HyperliquidPaperLifecycleReport> {
+  const lifecycleStartedAt = Date.now();
   const sortedSchedule = [...new Set(checkpointScheduleSeconds)]
     .filter((seconds) => Number.isFinite(seconds) && seconds >= 0)
     .sort((a, b) => a - b);
 
-  const entryEvents = watchlistReport.events
-    .filter((event) => event.decision === "paper_entry")
+  const paperEntryEvents = watchlistReport.events.filter((event) => event.decision === "paper_entry");
+  const freshEntryEvents = paperEntryEvents.filter(
+    (event) => eventAgeSeconds(event, lifecycleStartedAt) <= maxEntryAgeSeconds
+  );
+  const entryEvents = freshEntryEvents
     .sort((a, b) => b.totalNotionalUsd - a.totalNotionalUsd)
     .slice(0, maxPositions ?? undefined);
 
-  const positions = entryEvents.map((event) => createLifecyclePosition(event));
+  const positions = entryEvents.map((event) =>
+    createLifecyclePosition({ event, now: lifecycleStartedAt })
+  );
   let previousDelaySeconds = 0;
 
   for (const delaySeconds of sortedSchedule) {
@@ -196,6 +219,7 @@ export async function buildPaperLifecycleReport({
       await sleep(waitMs);
     }
 
+    const checkpointNow = Date.now();
     const mids = await fetchAllMids({ ...(infoUrl ? { infoUrl } : {}) });
 
     for (const position of positions) {
@@ -204,6 +228,7 @@ export async function buildPaperLifecycleReport({
           event: position.sourceEvent,
           label: `${delaySeconds}s`,
           delaySeconds,
+          actualAgeSeconds: eventAgeSeconds(position.sourceEvent, checkpointNow),
           markPrice: mids[position.coin] ?? null
         })
       );
@@ -231,6 +256,9 @@ export async function buildPaperLifecycleReport({
     generatedAt: new Date().toISOString(),
     sourceGeneratedAt: watchlistReport.generatedAt,
     checkpointScheduleSeconds: sortedSchedule,
+    maxEntryAgeSeconds,
+    paperEntryEventsSeen: paperEntryEvents.length,
+    staleEntryEventsSkipped: paperEntryEvents.length - freshEntryEvents.length,
     positionsTracked: finalizedPositions.length,
     pricedPositions: pricedPositions.length,
     winningPositions: pricedPositions.filter((position) => (position.finalEstimatedPnlUsd ?? 0) > 0).length,
