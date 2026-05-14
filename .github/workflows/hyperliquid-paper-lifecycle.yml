@@ -10,7 +10,7 @@ on:
       lookback_minutes:
         description: "How many recent minutes to inspect for new watchlist events"
         required: true
-        default: "15"
+        default: "5"
       min_event_notional_usd:
         description: "Minimum aggregated event notional for paper entry/exit"
         required: true
@@ -18,11 +18,15 @@ on:
       lifecycle_checkpoint_seconds:
         description: "Comma-separated lifecycle checkpoints in seconds"
         required: true
-        default: "0,60,300"
+        default: "0,60,180"
       lifecycle_max_positions:
         description: "Max paper-entry positions to track"
         required: true
         default: "10"
+      lifecycle_max_entry_age_seconds:
+        description: "Skip paper entries older than this at lifecycle start"
+        required: true
+        default: "120"
       strong_coins:
         description: "Comma-separated coins allowed for paper entries"
         required: true
@@ -71,6 +75,7 @@ jobs:
           HYPERLIQUID_PAPER_LIFECYCLE_REPORT_PATH: data/hyperliquid-paper-lifecycle-report.json
           HYPERLIQUID_PAPER_LIFECYCLE_CHECKPOINT_SECONDS: ${{ inputs.lifecycle_checkpoint_seconds }}
           HYPERLIQUID_PAPER_LIFECYCLE_MAX_POSITIONS: ${{ inputs.lifecycle_max_positions }}
+          HYPERLIQUID_PAPER_LIFECYCLE_MAX_ENTRY_AGE_SECONDS: ${{ inputs.lifecycle_max_entry_age_seconds }}
         run: pnpm hyperliquid:lifecycle
 
       - name: Upload lifecycle reports artifact
