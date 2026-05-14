@@ -11,6 +11,10 @@ on:
         description: "How many recent minutes to inspect"
         required: true
         default: "15"
+      min_event_notional_usd:
+        description: "Minimum aggregated event notional for paper entry/exit"
+        required: true
+        default: "500"
       strong_coins:
         description: "Comma-separated coins allowed for paper-watch signals"
         required: true
@@ -47,6 +51,7 @@ jobs:
       - name: Run Hyperliquid live watchlist
         env:
           HYPERLIQUID_WATCHLIST_LOOKBACK_MINUTES: ${{ inputs.lookback_minutes }}
+          HYPERLIQUID_WATCHLIST_MIN_EVENT_NOTIONAL_USD: ${{ inputs.min_event_notional_usd }}
           HYPERLIQUID_WATCHLIST_WALLETS: ${{ inputs.wallets }}
           HYPERLIQUID_WATCHLIST_STRONG_COINS: ${{ inputs.strong_coins }}
           HYPERLIQUID_WATCHLIST_REPORT_PATH: data/hyperliquid-watchlist-report.json
