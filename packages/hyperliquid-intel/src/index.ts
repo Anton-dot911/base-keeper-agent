@@ -6,9 +6,13 @@ export { scoreWallet } from "./wallet-score.js";
 export { buildWalletIntelligenceReport } from "./report.js";
 export { buildHyperliquidWatchlistReport } from "./watchlist.js";
 export { buildPaperTradingReport } from "./paper-trading.js";
+export { buildPaperLifecycleReport } from "./paper-lifecycle.js";
 export type {
   CoinPerformance,
   HyperliquidFill,
+  HyperliquidPaperLifecycleCheckpoint,
+  HyperliquidPaperLifecyclePosition,
+  HyperliquidPaperLifecycleReport,
   HyperliquidPaperTrade,
   HyperliquidPaperTradingReport,
   HyperliquidSide,
