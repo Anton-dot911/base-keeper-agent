@@ -1,0 +1,83 @@
+name: Hyperliquid Paper Lifecycle
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: "Branch containing the Hyperliquid paper lifecycle code"
+        required: true
+        default: "v0.3.3-hyperliquid-paper-lifecycle"
+      lookback_minutes:
+        description: "How many recent minutes to inspect for new watchlist events"
+        required: true
+        default: "15"
+      min_event_notional_usd:
+        description: "Minimum aggregated event notional for paper entry/exit"
+        required: true
+        default: "500"
+      lifecycle_checkpoint_seconds:
+        description: "Comma-separated lifecycle checkpoints in seconds"
+        required: true
+        default: "0,60,300"
+      lifecycle_max_positions:
+        description: "Max paper-entry positions to track"
+        required: true
+        default: "10"
+      strong_coins:
+        description: "Comma-separated coins allowed for paper entries"
+        required: true
+        default: "ETH,BTC"
+      wallets:
+        description: "Comma-separated Hyperliquid watchlist wallet addresses"
+        required: true
+        default: "0xae7a0f9f663bb54bfe95378c7e3de7dd6e28d6bc,0x49cba59fce90bfdb2ac76f84b6d5144a84bcb3a8"
+
+jobs:
+  paper-lifecycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout paper lifecycle branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target_branch }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build watchlist report
+        env:
+          HYPERLIQUID_WATCHLIST_LOOKBACK_MINUTES: ${{ inputs.lookback_minutes }}
+          HYPERLIQUID_WATCHLIST_MIN_EVENT_NOTIONAL_USD: ${{ inputs.min_event_notional_usd }}
+          HYPERLIQUID_WATCHLIST_WALLETS: ${{ inputs.wallets }}
+          HYPERLIQUID_WATCHLIST_STRONG_COINS: ${{ inputs.strong_coins }}
+          HYPERLIQUID_WATCHLIST_REPORT_PATH: data/hyperliquid-watchlist-report.json
+        run: pnpm hyperliquid:watchlist
+
+      - name: Run paper lifecycle simulation
+        env:
+          HYPERLIQUID_WATCHLIST_REPORT_PATH: data/hyperliquid-watchlist-report.json
+          HYPERLIQUID_PAPER_LIFECYCLE_REPORT_PATH: data/hyperliquid-paper-lifecycle-report.json
+          HYPERLIQUID_PAPER_LIFECYCLE_CHECKPOINT_SECONDS: ${{ inputs.lifecycle_checkpoint_seconds }}
+          HYPERLIQUID_PAPER_LIFECYCLE_MAX_POSITIONS: ${{ inputs.lifecycle_max_positions }}
+        run: pnpm hyperliquid:lifecycle
+
+      - name: Upload lifecycle reports artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hyperliquid-paper-lifecycle-reports
+          path: |
+            data/hyperliquid-watchlist-report.json
+            data/hyperliquid-paper-lifecycle-report.json
+          if-no-files-found: error
