@@ -177,6 +177,8 @@ export type HyperliquidPaperLifecycleCheckpoint = {
   actualAgeSeconds: number;
   checkedAt: string;
   markPrice: number | null;
+  copyDelayPnlUsd: number | null;
+  copyDelayReturnBps: number | null;
   estimatedPnlUsd: number | null;
   estimatedReturnBps: number | null;
   status: "winning" | "losing" | "flat" | "unpriced";
@@ -197,6 +199,9 @@ export type HyperliquidPaperLifecyclePosition = {
   entryAgeAtStartSeconds: number;
   sourceEvent: HyperliquidTradeEvent;
   checkpoints: HyperliquidPaperLifecycleCheckpoint[];
+  firstCheckpointMarkPrice: number | null;
+  firstCheckpointCopyDelayPnlUsd: number | null;
+  firstCheckpointCopyDelayReturnBps: number | null;
   finalStatus: "winning" | "losing" | "flat" | "unpriced";
   finalDecision: "paper_hold" | "paper_take_profit" | "paper_cut" | "unpriced";
   finalEstimatedPnlUsd: number | null;
@@ -219,5 +224,6 @@ export type HyperliquidPaperLifecycleReport = {
   losingPositions: number;
   totalFinalEstimatedPnlUsd: number;
   averageFinalEstimatedReturnBps: number | null;
+  averageFirstCheckpointCopyDelayReturnBps: number | null;
   positions: HyperliquidPaperLifecyclePosition[];
 };
