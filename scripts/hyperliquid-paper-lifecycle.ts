@@ -29,10 +29,10 @@ async function main(): Promise<void> {
   const outputPath = process.env.HYPERLIQUID_PAPER_LIFECYCLE_REPORT_PATH || "data/hyperliquid-paper-lifecycle-report.json";
   const checkpointScheduleSeconds = parseNumberList(
     process.env.HYPERLIQUID_PAPER_LIFECYCLE_CHECKPOINT_SECONDS,
-    [0, 60, 300]
+    [0, 30, 60, 180]
   );
   const maxPositions = parseNumber(process.env.HYPERLIQUID_PAPER_LIFECYCLE_MAX_POSITIONS, 10);
-  const maxEntryAgeSeconds = parseNumber(process.env.HYPERLIQUID_PAPER_LIFECYCLE_MAX_ENTRY_AGE_SECONDS, 120);
+  const maxEntryAgeSeconds = parseNumber(process.env.HYPERLIQUID_PAPER_LIFECYCLE_MAX_ENTRY_AGE_SECONDS, 60);
   const infoUrl = process.env.HYPERLIQUID_INFO_URL;
 
   console.log(
@@ -73,10 +73,15 @@ async function main(): Promise<void> {
         staleEntryEventsSkipped: report.staleEntryEventsSkipped,
         positionsTracked: report.positionsTracked,
         pricedPositions: report.pricedPositions,
+        usablePositions: report.usablePositions,
+        rejectedPositions: report.rejectedPositions,
         winningPositions: report.winningPositions,
         losingPositions: report.losingPositions,
         totalFinalEstimatedPnlUsd: report.totalFinalEstimatedPnlUsd,
+        totalUsableFinalEstimatedPnlUsd: report.totalUsableFinalEstimatedPnlUsd,
         averageFinalEstimatedReturnBps: report.averageFinalEstimatedReturnBps,
+        averageUsableFinalEstimatedReturnBps: report.averageUsableFinalEstimatedReturnBps,
+        averageFirstCheckpointCopyDelayReturnBps: report.averageFirstCheckpointCopyDelayReturnBps,
         outputPath: absoluteOutputPath,
         positions: report.positions.slice(0, 20)
       },
