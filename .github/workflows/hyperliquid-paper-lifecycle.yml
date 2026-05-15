@@ -10,7 +10,7 @@ on:
       lookback_minutes:
         description: "How many recent minutes to inspect for new watchlist events"
         required: true
-        default: "5"
+        default: "2"
       min_event_notional_usd:
         description: "Minimum aggregated event notional for paper entry/exit"
         required: true
@@ -18,7 +18,7 @@ on:
       lifecycle_checkpoint_seconds:
         description: "Comma-separated lifecycle checkpoints in seconds"
         required: true
-        default: "0,60,180"
+        default: "0,30,60,180"
       lifecycle_max_positions:
         description: "Max paper-entry positions to track"
         required: true
@@ -26,7 +26,7 @@ on:
       lifecycle_max_entry_age_seconds:
         description: "Skip paper entries older than this at lifecycle start"
         required: true
-        default: "120"
+        default: "60"
       strong_coins:
         description: "Comma-separated coins allowed for paper entries"
         required: true
