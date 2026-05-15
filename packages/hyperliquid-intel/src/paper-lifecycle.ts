@@ -9,7 +9,9 @@ import type {
 
 const DEFAULT_TAKE_PROFIT_BPS = 25;
 const DEFAULT_STOP_LOSS_BPS = -25;
-const DEFAULT_MAX_ENTRY_AGE_SECONDS = 120;
+const DEFAULT_MAX_ENTRY_AGE_SECONDS = 60;
+const DEFAULT_MIN_USABLE_NOTIONAL_USD = 1_000;
+const DEFAULT_MIN_COPY_DELAY_RETURN_BPS = -5;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -118,19 +120,8 @@ function buildCheckpoint({
     estimatedPnlUsd === null || event.totalNotionalUsd <= 0
       ? null
       : (estimatedPnlUsd / event.totalNotionalUsd) * 10_000;
-  const copyDelayPnlUsd =
-    markPrice === null
-      ? null
-      : estimatePnl({
-          positionSide,
-          entryPrice: event.averagePrice,
-          markPrice,
-          size: event.totalSize
-        });
-  const copyDelayReturnBps =
-    copyDelayPnlUsd === null || event.totalNotionalUsd <= 0
-      ? null
-      : (copyDelayPnlUsd / event.totalNotionalUsd) * 10_000;
+  const copyDelayPnlUsd = estimatedPnlUsd;
+  const copyDelayReturnBps = estimatedReturnBps;
   const outcome = checkpointDecision(estimatedReturnBps);
 
   return {
@@ -172,6 +163,8 @@ function createLifecyclePosition({
     firstCheckpointMarkPrice: null,
     firstCheckpointCopyDelayPnlUsd: null,
     firstCheckpointCopyDelayReturnBps: null,
+    copyEligibility: "unpriced",
+    copyEligibilityReasons: [],
     finalStatus: "unpriced",
     finalDecision: "unpriced",
     finalEstimatedPnlUsd: null,
@@ -181,16 +174,70 @@ function createLifecyclePosition({
   };
 }
 
-function finalizeLifecyclePosition(
-  position: HyperliquidPaperLifecyclePosition
-): HyperliquidPaperLifecyclePosition {
+function evaluateCopyEligibility({
+  position,
+  minUsableNotionalUsd,
+  minCopyDelayReturnBps,
+  maxEntryAgeSeconds
+}: {
+  position: HyperliquidPaperLifecyclePosition;
+  minUsableNotionalUsd: number;
+  minCopyDelayReturnBps: number;
+  maxEntryAgeSeconds: number;
+}): Pick<HyperliquidPaperLifecyclePosition, "copyEligibility" | "copyEligibilityReasons"> {
+  const reasons: string[] = [];
+
+  if (position.firstCheckpointCopyDelayReturnBps === null) {
+    reasons.push("first_checkpoint_unpriced");
+  }
+
+  if (position.entryAgeAtStartSeconds > maxEntryAgeSeconds) {
+    reasons.push("entry_age_above_limit");
+  }
+
+  if (position.notionalUsd < minUsableNotionalUsd) {
+    reasons.push("notional_below_minimum");
+  }
+
+  if (
+    position.firstCheckpointCopyDelayReturnBps !== null &&
+    position.firstCheckpointCopyDelayReturnBps < minCopyDelayReturnBps
+  ) {
+    reasons.push("copy_delay_too_negative");
+  }
+
+  if (position.positionSide === "unknown") {
+    reasons.push("unknown_position_side");
+  }
+
+  if (position.firstCheckpointCopyDelayReturnBps === null) {
+    return { copyEligibility: "unpriced", copyEligibilityReasons: reasons };
+  }
+
+  return {
+    copyEligibility: reasons.length === 0 ? "usable" : "rejected",
+    copyEligibilityReasons: reasons
+  };
+}
+
+function finalizeLifecyclePosition({
+  position,
+  minUsableNotionalUsd,
+  minCopyDelayReturnBps,
+  maxEntryAgeSeconds
+}: {
+  position: HyperliquidPaperLifecyclePosition;
+  minUsableNotionalUsd: number;
+  minCopyDelayReturnBps: number;
+  maxEntryAgeSeconds: number;
+}): HyperliquidPaperLifecyclePosition {
   const firstCheckpoint = position.checkpoints[0];
   const finalCheckpoint = position.checkpoints[position.checkpoints.length - 1];
   const pricedPnlValues = position.checkpoints
     .map((checkpoint) => checkpoint.estimatedPnlUsd)
     .filter((pnl): pnl is number => pnl !== null);
 
-  return {
+  const basePosition = {
     ...position,
     firstCheckpointMarkPrice: firstCheckpoint?.markPrice ?? null,
     firstCheckpointCopyDelayPnlUsd: firstCheckpoint?.copyDelayPnlUsd ?? null,
@@ -202,6 +249,18 @@ function finalizeLifecyclePosition(
     maxFavorablePnlUsd: pricedPnlValues.length > 0 ? round(Math.max(...pricedPnlValues), 2) : null,
     maxAdversePnlUsd: pricedPnlValues.length > 0 ? round(Math.min(...pricedPnlValues), 2) : null
   };
+
+  const eligibility = evaluateCopyEligibility({
+    position: basePosition,
+    minUsableNotionalUsd,
+    minCopyDelayReturnBps,
+    maxEntryAgeSeconds
+  });
+
+  return {
+    ...basePosition,
+    ...eligibility
+  };
 }
 
 export async function buildPaperLifecycleReport({
@@ -209,12 +268,16 @@ export async function buildPaperLifecycleReport({
   checkpointScheduleSeconds,
   maxPositions,
   maxEntryAgeSeconds = DEFAULT_MAX_ENTRY_AGE_SECONDS,
+  minUsableNotionalUsd = DEFAULT_MIN_USABLE_NOTIONAL_USD,
+  minCopyDelayReturnBps = DEFAULT_MIN_COPY_DELAY_RETURN_BPS,
   infoUrl
 }: {
   watchlistReport: HyperliquidWatchlistReport;
   checkpointScheduleSeconds: number[];
   maxPositions?: number;
   maxEntryAgeSeconds?: number;
+  minUsableNotionalUsd?: number;
+  minCopyDelayReturnBps?: number;
   infoUrl?: string;
 }): Promise<HyperliquidPaperLifecycleReport> {
   const lifecycleStartedAt = Date.now();
@@ -259,12 +322,24 @@ export async function buildPaperLifecycleReport({
     previousDelaySeconds = delaySeconds;
   }
 
-  const finalizedPositions = positions.map((position) => finalizeLifecyclePosition(position));
+  const finalizedPositions = positions.map((position) =>
+    finalizeLifecyclePosition({
+      position,
+      minUsableNotionalUsd,
+      minCopyDelayReturnBps,
+      maxEntryAgeSeconds
+    })
+  );
   const pricedPositions = finalizedPositions.filter((position) => position.finalEstimatedPnlUsd !== null);
+  const usablePositions = finalizedPositions.filter((position) => position.copyEligibility === "usable");
   const firstCheckpointCopyDelayReturnBpsValues = finalizedPositions
     .map((position) => position.firstCheckpointCopyDelayReturnBps)
     .filter((value): value is number => value !== null);
   const totalFinalEstimatedPnlUsd = pricedPositions.reduce(
+    (sum, position) => sum + (position.finalEstimatedPnlUsd ?? 0),
+    0
+  );
+  const totalUsableFinalEstimatedPnlUsd = usablePositions.reduce(
     (sum, position) => sum + (position.finalEstimatedPnlUsd ?? 0),
     0
   );
@@ -275,6 +350,13 @@ export async function buildPaperLifecycleReport({
           (sum, position) => sum + (position.finalEstimatedReturnBps ?? 0),
           0
         ) / pricedPositions.length;
+  const averageUsableFinalEstimatedReturnBps =
+    usablePositions.length === 0
+      ? null
+      : usablePositions.reduce(
+          (sum, position) => sum + (position.finalEstimatedReturnBps ?? 0),
+          0
+        ) / usablePositions.length;
   const averageFirstCheckpointCopyDelayReturnBps =
     firstCheckpointCopyDelayReturnBpsValues.length === 0
       ? null
@@ -287,15 +369,24 @@ export async function buildPaperLifecycleReport({
     sourceGeneratedAt: watchlistReport.generatedAt,
     checkpointScheduleSeconds: sortedSchedule,
     maxEntryAgeSeconds,
+    minUsableNotionalUsd,
+    minCopyDelayReturnBps,
     paperEntryEventsSeen: paperEntryEvents.length,
     staleEntryEventsSkipped: paperEntryEvents.length - freshEntryEvents.length,
     positionsTracked: finalizedPositions.length,
     pricedPositions: pricedPositions.length,
+    usablePositions: usablePositions.length,
+    rejectedPositions: finalizedPositions.filter((position) => position.copyEligibility === "rejected").length,
     winningPositions: pricedPositions.filter((position) => (position.finalEstimatedPnlUsd ?? 0) > 0).length,
     losingPositions: pricedPositions.filter((position) => (position.finalEstimatedPnlUsd ?? 0) < 0).length,
     totalFinalEstimatedPnlUsd: round(totalFinalEstimatedPnlUsd, 2),
+    totalUsableFinalEstimatedPnlUsd: round(totalUsableFinalEstimatedPnlUsd, 2),
     averageFinalEstimatedReturnBps:
       averageFinalEstimatedReturnBps === null ? null : round(averageFinalEstimatedReturnBps, 2),
+    averageUsableFinalEstimatedReturnBps:
+      averageUsableFinalEstimatedReturnBps === null
+        ? null
+        : round(averageUsableFinalEstimatedReturnBps, 2),
     averageFirstCheckpointCopyDelayReturnBps:
       averageFirstCheckpointCopyDelayReturnBps === null
         ? null
