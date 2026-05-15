@@ -118,6 +118,19 @@ function buildCheckpoint({
     estimatedPnlUsd === null || event.totalNotionalUsd <= 0
       ? null
       : (estimatedPnlUsd / event.totalNotionalUsd) * 10_000;
+  const copyDelayPnlUsd =
+    markPrice === null
+      ? null
+      : estimatePnl({
+          positionSide,
+          entryPrice: event.averagePrice,
+          markPrice,
+          size: event.totalSize
+        });
+  const copyDelayReturnBps =
+    copyDelayPnlUsd === null || event.totalNotionalUsd <= 0
+      ? null
+      : (copyDelayPnlUsd / event.totalNotionalUsd) * 10_000;
   const outcome = checkpointDecision(estimatedReturnBps);
 
   return {
@@ -126,6 +139,8 @@ function buildCheckpoint({
     actualAgeSeconds: round(actualAgeSeconds, 2),
     checkedAt: new Date().toISOString(),
     markPrice,
+    copyDelayPnlUsd: copyDelayPnlUsd === null ? null : round(copyDelayPnlUsd, 2),
+    copyDelayReturnBps: copyDelayReturnBps === null ? null : round(copyDelayReturnBps, 2),
     estimatedPnlUsd: estimatedPnlUsd === null ? null : round(estimatedPnlUsd, 2),
     estimatedReturnBps: estimatedReturnBps === null ? null : round(estimatedReturnBps, 2),
     status: outcome.status,
@@ -154,6 +169,9 @@ function createLifecyclePosition({
     entryAgeAtStartSeconds: round(eventAgeSeconds(event, now), 2),
     sourceEvent: event,
     checkpoints: [],
+    firstCheckpointMarkPrice: null,
+    firstCheckpointCopyDelayPnlUsd: null,
+    firstCheckpointCopyDelayReturnBps: null,
     finalStatus: "unpriced",
     finalDecision: "unpriced",
     finalEstimatedPnlUsd: null,
@@ -166,6 +184,7 @@ function createLifecyclePosition({
 function finalizeLifecyclePosition(
   position: HyperliquidPaperLifecyclePosition
 ): HyperliquidPaperLifecyclePosition {
+  const firstCheckpoint = position.checkpoints[0];
   const finalCheckpoint = position.checkpoints[position.checkpoints.length - 1];
   const pricedPnlValues = position.checkpoints
     .map((checkpoint) => checkpoint.estimatedPnlUsd)
@@ -173,6 +192,9 @@ function finalizeLifecyclePosition(
 
   return {
     ...position,
+    firstCheckpointMarkPrice: firstCheckpoint?.markPrice ?? null,
+    firstCheckpointCopyDelayPnlUsd: firstCheckpoint?.copyDelayPnlUsd ?? null,
+    firstCheckpointCopyDelayReturnBps: firstCheckpoint?.copyDelayReturnBps ?? null,
     finalStatus: finalCheckpoint?.status ?? "unpriced",
     finalDecision: finalCheckpoint?.decision ?? "unpriced",
     finalEstimatedPnlUsd: finalCheckpoint?.estimatedPnlUsd ?? null,
@@ -239,6 +261,9 @@ export async function buildPaperLifecycleReport({
 
   const finalizedPositions = positions.map((position) => finalizeLifecyclePosition(position));
   const pricedPositions = finalizedPositions.filter((position) => position.finalEstimatedPnlUsd !== null);
+  const firstCheckpointCopyDelayReturnBpsValues = finalizedPositions
+    .map((position) => position.firstCheckpointCopyDelayReturnBps)
+    .filter((value): value is number => value !== null);
   const totalFinalEstimatedPnlUsd = pricedPositions.reduce(
     (sum, position) => sum + (position.finalEstimatedPnlUsd ?? 0),
     0
@@ -250,6 +275,11 @@ export async function buildPaperLifecycleReport({
           (sum, position) => sum + (position.finalEstimatedReturnBps ?? 0),
           0
         ) / pricedPositions.length;
+  const averageFirstCheckpointCopyDelayReturnBps =
+    firstCheckpointCopyDelayReturnBpsValues.length === 0
+      ? null
+      : firstCheckpointCopyDelayReturnBpsValues.reduce((sum, value) => sum + value, 0) /
+        firstCheckpointCopyDelayReturnBpsValues.length;
 
   return {
     type: "hyperliquid_paper_lifecycle_report",
@@ -266,6 +296,10 @@ export async function buildPaperLifecycleReport({
     totalFinalEstimatedPnlUsd: round(totalFinalEstimatedPnlUsd, 2),
     averageFinalEstimatedReturnBps:
       averageFinalEstimatedReturnBps === null ? null : round(averageFinalEstimatedReturnBps, 2),
+    averageFirstCheckpointCopyDelayReturnBps:
+      averageFirstCheckpointCopyDelayReturnBps === null
+        ? null
+        : round(averageFirstCheckpointCopyDelayReturnBps, 2),
     positions: finalizedPositions.sort(
       (a, b) => Math.abs(b.finalEstimatedPnlUsd ?? 0) - Math.abs(a.finalEstimatedPnlUsd ?? 0)
     )
