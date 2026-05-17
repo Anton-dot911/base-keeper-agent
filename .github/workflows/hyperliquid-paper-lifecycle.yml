@@ -60,6 +60,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
+      - name: Restore lifecycle history cache
+        uses: actions/cache/restore@v4
+        with:
+          path: data/hyperliquid-lifecycle-history.jsonl
+          key: hyperliquid-lifecycle-history-${{ github.run_id }}
+          restore-keys: |
+            hyperliquid-lifecycle-history-
+
       - name: Build watchlist report
         env:
           HYPERLIQUID_WATCHLIST_LOOKBACK_MINUTES: ${{ inputs.lookback_minutes }}
@@ -83,6 +91,19 @@ jobs:
           HYPERLIQUID_PAPER_LIFECYCLE_REPORT_PATH: data/hyperliquid-paper-lifecycle-report.json
         run: pnpm exec tsx scripts/hyperliquid-follow-through.ts
 
+      - name: Update cumulative lifecycle history
+        env:
+          HYPERLIQUID_PAPER_LIFECYCLE_REPORT_PATH: data/hyperliquid-paper-lifecycle-report.json
+          HYPERLIQUID_LIFECYCLE_HISTORY_PATH: data/hyperliquid-lifecycle-history.jsonl
+          HYPERLIQUID_LIFECYCLE_CUMULATIVE_REPORT_PATH: data/hyperliquid-lifecycle-cumulative-report.json
+        run: pnpm exec tsx scripts/hyperliquid-lifecycle-history.ts
+
+      - name: Save lifecycle history cache
+        uses: actions/cache/save@v4
+        with:
+          path: data/hyperliquid-lifecycle-history.jsonl
+          key: hyperliquid-lifecycle-history-${{ github.run_id }}
+
       - name: Upload lifecycle reports artifact
         uses: actions/upload-artifact@v4
         with:
@@ -90,4 +111,6 @@ jobs:
           path: |
             data/hyperliquid-watchlist-report.json
             data/hyperliquid-paper-lifecycle-report.json
+            data/hyperliquid-lifecycle-cumulative-report.json
+            data/hyperliquid-lifecycle-history.jsonl
           if-no-files-found: error
