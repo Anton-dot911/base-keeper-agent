@@ -78,6 +78,11 @@ jobs:
           HYPERLIQUID_PAPER_LIFECYCLE_MAX_ENTRY_AGE_SECONDS: ${{ inputs.lifecycle_max_entry_age_seconds }}
         run: pnpm hyperliquid:lifecycle
 
+      - name: Score follow-through
+        env:
+          HYPERLIQUID_PAPER_LIFECYCLE_REPORT_PATH: data/hyperliquid-paper-lifecycle-report.json
+        run: pnpm exec tsx scripts/hyperliquid-follow-through.ts
+
       - name: Upload lifecycle reports artifact
         uses: actions/upload-artifact@v4
         with:
