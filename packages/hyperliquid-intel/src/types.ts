@@ -171,6 +171,8 @@ export type HyperliquidPaperTradingReport = {
   trades: HyperliquidPaperTrade[];
 };
 
+export type HyperliquidPaperLifecycleVerdict = "strong" | "weak" | "negative" | "unpriced";
+
 export type HyperliquidPaperLifecycleCheckpoint = {
   label: string;
   delaySeconds: number;
@@ -204,6 +206,14 @@ export type HyperliquidPaperLifecyclePosition = {
   firstCheckpointCopyDelayReturnBps: number | null;
   copyEligibility: "usable" | "rejected" | "unpriced";
   copyEligibilityReasons: string[];
+  profitableAt30s: boolean | null;
+  profitableAt60s: boolean | null;
+  profitableAt180s: boolean | null;
+  bestCheckpointLabel: string | null;
+  worstCheckpointLabel: string | null;
+  followThroughScore: number;
+  lifecycleVerdict: HyperliquidPaperLifecycleVerdict;
+  lifecycleVerdictReasons: string[];
   finalStatus: "winning" | "losing" | "flat" | "unpriced";
   finalDecision: "paper_hold" | "paper_take_profit" | "paper_cut" | "unpriced";
   finalEstimatedPnlUsd: number | null;
@@ -226,6 +236,9 @@ export type HyperliquidPaperLifecycleReport = {
   pricedPositions: number;
   usablePositions: number;
   rejectedPositions: number;
+  strongLifecyclePositions: number;
+  weakLifecyclePositions: number;
+  negativeLifecyclePositions: number;
   winningPositions: number;
   losingPositions: number;
   totalFinalEstimatedPnlUsd: number;
@@ -233,5 +246,6 @@ export type HyperliquidPaperLifecycleReport = {
   averageFinalEstimatedReturnBps: number | null;
   averageUsableFinalEstimatedReturnBps: number | null;
   averageFirstCheckpointCopyDelayReturnBps: number | null;
+  averageFollowThroughScore: number | null;
   positions: HyperliquidPaperLifecyclePosition[];
 };
