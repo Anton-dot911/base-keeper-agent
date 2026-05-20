@@ -7,6 +7,7 @@ export { buildWalletIntelligenceReport } from "./report.js";
 export { buildHyperliquidWatchlistReport } from "./watchlist.js";
 export { buildPaperTradingReport } from "./paper-trading.js";
 export { buildPaperLifecycleReport } from "./paper-lifecycle.js";
+export { importWatchlistFromFile, watchlistToWalletInput } from "./watchlist-importer.js";
 export type {
   CoinPerformance,
   HyperliquidFill,
@@ -23,3 +24,4 @@ export type {
   WalletIntelligenceReport,
   WalletScore
 } from "./types.js";
+export type { ImportedWatchlist, ImportedWatchlistWallet } from "./watchlist-importer.js";
