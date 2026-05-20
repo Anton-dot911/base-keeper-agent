@@ -1,0 +1,28 @@
+{
+  "type": "hyperliquid_candidate_watchlist",
+  "version": "1.0",
+  "source": "dune",
+  "platform": "hyperliquid",
+  "generatedAt": "2026-05-02T00:00:00.000Z",
+  "walletCount": 3,
+  "wallets": [
+    {
+      "address": "0x6c3ed2461e4f90e8f22d975994173544af9b5bd3",
+      "tier": "core",
+      "score": 89.87,
+      "rank": 1
+    },
+    {
+      "address": "0x5d98f54d829708eeb2aa555badb96bcb5400def1",
+      "tier": "core",
+      "score": 89.12,
+      "rank": 2
+    },
+    {
+      "address": "0xa2e28dedaab59d732ae375832fb855510aa7fe57",
+      "tier": "candidate",
+      "score": 88.91,
+      "rank": 3
+    }
+  ]
+}
