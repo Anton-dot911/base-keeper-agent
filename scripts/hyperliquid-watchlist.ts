@@ -2,7 +2,11 @@ import "dotenv/config";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
-import { buildHyperliquidWatchlistReport } from "../packages/hyperliquid-intel/src/index.js";
+import {
+  buildHyperliquidWatchlistReport,
+  importWatchlistFromFile,
+  watchlistToWalletInput
+} from "../packages/hyperliquid-intel/src/index.js";
 
 function parseList(value: string | undefined): string[] {
   if (!value) return [];
@@ -19,8 +23,48 @@ function parseNumber(value: string | undefined, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+async function resolveWallets({
+  manualWallets,
+  watchlistPath,
+  limitWallets
+}: {
+  manualWallets: string[];
+  watchlistPath?: string;
+  limitWallets?: number;
+}): Promise<string[]> {
+  if (!watchlistPath) return manualWallets;
+
+  const imported = await importWatchlistFromFile({
+    path: resolve(watchlistPath),
+    limitWallets
+  });
+
+  console.log(
+    JSON.stringify(
+      {
+        type: "hyperliquid_watchlist_imported",
+        source: imported.source,
+        platform: imported.platform,
+        walletCount: imported.walletCount,
+        workflowInput: watchlistToWalletInput(imported).slice(0, 500)
+      },
+      null,
+      2
+    )
+  );
+
+  return imported.wallets.map((wallet) => wallet.address);
+}
+
 async function main(): Promise<void> {
-  const wallets = parseList(process.env.HYPERLIQUID_WATCHLIST_WALLETS);
+  const manualWallets = parseList(process.env.HYPERLIQUID_WATCHLIST_WALLETS);
+  const watchlistPath = process.env.HYPERLIQUID_WATCHLIST_FILE;
+  const watchlistLimitWallets = parseNumber(process.env.HYPERLIQUID_WATCHLIST_LIMIT_WALLETS, 25);
+  const wallets = await resolveWallets({
+    manualWallets,
+    ...(watchlistPath ? { watchlistPath } : {}),
+    limitWallets: watchlistLimitWallets
+  });
   const strongCoins = parseList(process.env.HYPERLIQUID_WATCHLIST_STRONG_COINS || "ETH,BTC");
   const lookbackMinutes = parseNumber(process.env.HYPERLIQUID_WATCHLIST_LOOKBACK_MINUTES, 15);
   const minEventNotionalUsd = parseNumber(process.env.HYPERLIQUID_WATCHLIST_MIN_EVENT_NOTIONAL_USD, 500);
@@ -28,7 +72,7 @@ async function main(): Promise<void> {
   const infoUrl = process.env.HYPERLIQUID_INFO_URL;
 
   if (wallets.length === 0) {
-    throw new Error("HYPERLIQUID_WATCHLIST_WALLETS is required. Provide comma, space, or newline separated wallet addresses.");
+    throw new Error("Provide HYPERLIQUID_WATCHLIST_WALLETS or HYPERLIQUID_WATCHLIST_FILE with valid wallet addresses.");
   }
 
   console.log(
@@ -36,6 +80,7 @@ async function main(): Promise<void> {
       {
         type: "hyperliquid_watchlist_started",
         wallets: wallets.length,
+        walletSource: watchlistPath ? "file" : "manual",
         strongCoins,
         lookbackMinutes,
         minEventNotionalUsd,
